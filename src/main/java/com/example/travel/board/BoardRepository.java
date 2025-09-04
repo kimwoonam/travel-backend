@@ -9,4 +9,5 @@ import java.util.Optional;
 public interface BoardRepository extends JpaRepository<Board, Long> {
     List<Board> findAllByOrderByCreatedAtDesc();
     Optional<Board> findByUuid(String uuid);
+    void deleteByUuidIn(List<String> uuids);
 }

@@ -1,11 +1,13 @@
 package com.example.travel.board;
 
 import com.example.travel.config.UuidCryptoUtil;
+import java.util.Arrays;
 import java.util.List;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.ResponseEntity;
+import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.bind.annotation.CrossOrigin;
 import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -89,6 +91,27 @@ public class BoardController {
             log.info("deleteBoard - 받은 UUID: {}", uuid);
             boardService.deleteBoard(uuid);
             return ResponseEntity.ok().build();
+        } catch (RuntimeException e) {
+            log.error("게시글 삭제 중 오류 발생: {}", e.getMessage());
+            return ResponseEntity.notFound().build();
+        }
+    }
+
+    @DeleteMapping("/bulk/{uuid}")
+    @Transactional
+    public ResponseEntity<Void> deleteBoardByUuids(@PathVariable String uuid) {
+
+        try {
+            if (uuid.isEmpty()) {
+                log.error("파라메터 오류");
+                return ResponseEntity.badRequest().build();
+            }
+
+            List<String> uuids = Arrays.asList(uuid.split(","));
+
+            log.info("deleteBoardByUuids - 받은 UUIDs: {}", uuids);
+            boardService.deleteBoardBulk(uuids);
+            return ResponseEntity.noContent().build();
         } catch (RuntimeException e) {
             log.error("게시글 삭제 중 오류 발생: {}", e.getMessage());
             return ResponseEntity.notFound().build();

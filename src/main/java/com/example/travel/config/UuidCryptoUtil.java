@@ -1,5 +1,7 @@
 package com.example.travel.config;
 
+import org.apache.logging.log4j.LogManager;
+import org.apache.logging.log4j.Logger;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Component;
 
@@ -11,6 +13,7 @@ import java.util.Base64;
 @Component
 public class UuidCryptoUtil {
 
+    private static final Logger log = LogManager.getLogger(UuidCryptoUtil.class);
     @Value("${uuid.crypto.secret:travel-app-uuid-secret-key-32}")
     private String secretKey;
 
@@ -68,6 +71,7 @@ public class UuidCryptoUtil {
             decryptUuid(str);
             return true;
         } catch (Exception e) {
+            log.error(e);
             return false;
         }
     }

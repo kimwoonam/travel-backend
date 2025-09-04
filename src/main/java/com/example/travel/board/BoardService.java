@@ -1,6 +1,7 @@
 package com.example.travel.board;
 
 import com.example.travel.config.UuidCryptoUtil;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.UUID;
 import org.slf4j.Logger;
@@ -78,5 +79,18 @@ public class BoardService {
             .orElseThrow(() -> new RuntimeException("게시글을 찾을 수 없습니다."));
 
         boardRepository.delete(board);
+    }
+
+    public void deleteBoardBulk(List<String> encryptedUuids) {
+
+        List<String> uuids = new ArrayList<>();
+        encryptedUuids.forEach(encryptedUuid -> {
+            uuids.add(uuidCryptoUtil.decryptUuid(encryptedUuid));
+            log.debug("deleteBoardBulk - 복호화된 UUID: {}", uuidCryptoUtil.decryptUuid(encryptedUuid));
+        });
+
+        log.debug("uuids.size: {}", uuids.size());
+
+        boardRepository.deleteByUuidIn(uuids);
     }
 }
