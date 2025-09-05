@@ -1,4 +1,4 @@
-package com.example.travel.config;
+package com.example.travel.common.util;
 
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
@@ -11,9 +11,9 @@ import java.nio.charset.StandardCharsets;
 import java.util.Base64;
 
 @Component
-public class UuidCryptoUtil {
+public class CryptoUtil {
 
-    private static final Logger log = LogManager.getLogger(UuidCryptoUtil.class);
+    private static final Logger log = LogManager.getLogger(CryptoUtil.class);
     @Value("${uuid.crypto.secret:travel-app-uuid-secret-key-32}")
     private String secretKey;
 
@@ -25,7 +25,7 @@ public class UuidCryptoUtil {
      * @param uuid 암호화할 UUID
      * @return 암호화된 UUID (Base64 인코딩)
      */
-    public String encryptUuid(String uuid) {
+    public String encrypt(String uuid) {
         try {
             SecretKeySpec keySpec = new SecretKeySpec(secretKey.getBytes(StandardCharsets.UTF_8), ALGORITHM);
             Cipher cipher = Cipher.getInstance(TRANSFORMATION);
@@ -44,7 +44,7 @@ public class UuidCryptoUtil {
      * @param encryptedUuid 암호화된 UUID (Base64 인코딩)
      * @return 복호화된 UUID
      */
-    public String decryptUuid(String encryptedUuid) {
+    public String decrypt(String encryptedUuid) {
         try {
             SecretKeySpec keySpec = new SecretKeySpec(secretKey.getBytes(StandardCharsets.UTF_8), ALGORITHM);
             Cipher cipher = Cipher.getInstance(TRANSFORMATION);
@@ -63,12 +63,12 @@ public class UuidCryptoUtil {
      * @param str 확인할 문자열
      * @return 암호화된 UUID 여부
      */
-    public boolean isEncryptedUuid(String str) {
+    public boolean isEncrypted(String str) {
         try {
             // Base64 형식인지 확인
             Base64.getUrlDecoder().decode(str);
             // 복호화 시도
-            decryptUuid(str);
+            decrypt(str);
             return true;
         } catch (Exception e) {
             log.error(e);

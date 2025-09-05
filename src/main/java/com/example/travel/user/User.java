@@ -25,9 +25,6 @@ public class User {
     @NotBlank
     private String displayName;
 
-    @Column(name = "jwt_token")
-    private String jwtToken;
-
     public Long getId() { return id; }
     public void setId(Long id) { this.id = id; }
 
@@ -39,7 +36,4 @@ public class User {
 
     public String getDisplayName() { return displayName; }
     public void setDisplayName(String displayName) { this.displayName = displayName; }
-
-    public String getJwtToken() { return jwtToken; }
-    public void setJwtToken(String jwtToken) { this.jwtToken = jwtToken; }
 }

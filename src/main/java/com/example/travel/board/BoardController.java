@@ -1,6 +1,6 @@
 package com.example.travel.board;
 
-import com.example.travel.config.UuidCryptoUtil;
+import com.example.travel.common.util.CryptoUtil;
 import java.util.Arrays;
 import java.util.List;
 import org.slf4j.Logger;
@@ -20,17 +20,17 @@ import org.springframework.web.bind.annotation.RestController;
 
 @RestController
 @RequestMapping("/api/boards")
-@CrossOrigin(origins = "*")
+@CrossOrigin(origins = "http://127.0.0.1")
 public class BoardController {
 
     private static final Logger log = LoggerFactory.getLogger(BoardController.class);
     private final BoardService boardService;
-    private final UuidCryptoUtil uuidCryptoUtil;
+    private final CryptoUtil cryptoUtil;
 
     @Autowired
-    public BoardController(BoardService boardService, UuidCryptoUtil uuidCryptoUtil) {
+    public BoardController(BoardService boardService, CryptoUtil cryptoUtil) {
         this.boardService = boardService;
-        this.uuidCryptoUtil = uuidCryptoUtil;
+        this.cryptoUtil = cryptoUtil;
     }
 
     @GetMapping
@@ -48,9 +48,9 @@ public class BoardController {
             Board board;
 
             // UUID가 암호화된 형태인지 확인
-            if (uuidCryptoUtil.isEncryptedUuid(uuid)) {
+            if (cryptoUtil.isEncrypted(uuid)) {
                 // 암호화된 UUID로 직접 조회
-                String uuidDecrypted = uuidCryptoUtil.decryptUuid(uuid);
+                String uuidDecrypted = cryptoUtil.decrypt(uuid);
                 board = boardService.getBoardByUuid(uuidDecrypted);
                 log.debug("암호화된 UUID로 조회: {}", uuid);
             } else {
