@@ -16,7 +16,7 @@
 
 ### BackEnd
 
-* JDK 17
+* JDK 21
 * Spring Boot 3.3.3
     * web
     * jpa
@@ -28,6 +28,9 @@
 
 * PostgreSQL 16
 * Docker를 사용하여 생성함
+
+### ETC
+* REDIS
 
 
 ## 구조

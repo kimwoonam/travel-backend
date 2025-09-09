@@ -1,6 +1,6 @@
 package com.example.travel.common.interceptor;
 
-import com.example.travel.provider.JwtProvider;
+import com.example.travel.common.provider.JwtProvider;
 import com.example.travel.common.service.RedisService;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
@@ -18,15 +18,14 @@ public class JwtInterceptor implements HandlerInterceptor {
     private final RedisService redisService;
 
     @Autowired
-    public JwtInterceptor(JwtProvider jwtProvider,
-        RedisService redisService) {
+    public JwtInterceptor(JwtProvider jwtProvider, RedisService redisService) {
         this.jwtProvider = jwtProvider;
         this.redisService = redisService;
     }
 
     @Override
     public boolean preHandle(HttpServletRequest request, HttpServletResponse response,
-        Object handler) throws Exception {
+        Object handler) {
         // OPTIONS 요청은 CORS preflight 요청이므로 통과
         if (request.getMethod().equals("OPTIONS")) {
             return true;
@@ -54,15 +53,24 @@ public class JwtInterceptor implements HandlerInterceptor {
             response.setStatus(HttpServletResponse.SC_UNAUTHORIZED);
             return false;
         }
-        // 2. Redis 블랙리스트 확인
-        if (redisService.isJwtBlacklisted(jwtProvider.getJti(token))) {
+        // 2. Redis JWT 확인
+        if (!redisService.isJwt(jwtProvider.getJti(token))) {
             log.error("Token is logged out.");
             response.setStatus(HttpServletResponse.SC_UNAUTHORIZED);
             return false;
         }
 
-        request.setAttribute("userEmail", jwtProvider.getEmail(token));
-        request.setAttribute("displayName", jwtProvider.getDisplayName(token));
+        String email = jwtProvider.getEmail(token);
+        String userName = jwtProvider.getDisplayName(token);
+        // 3. Redis에 등록된 블랙리스트 검증
+        if (redisService.isBlacklist(email, userName)) {
+            log.error("email : '{}', userName : '{}' is blacklisted.", email, userName);
+            response.setStatus(HttpServletResponse.SC_UNAUTHORIZED);
+            return false;
+        }
+
+        request.setAttribute("userEmail", email);
+        request.setAttribute("displayName", userName);
 
         return true;
     }

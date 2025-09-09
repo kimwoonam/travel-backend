@@ -13,13 +13,29 @@ public class RedisService {
         this.redisTemplate = redisTemplate;
     }
 
-    public void addJwtBlacklist(String jti, long expiration) {
-        // 블랙리스트에 JWT의 JTI를 추가하고 만료 시간을 설정
-        redisTemplate.opsForValue().set("blacklist:" + jti, "invalid", expiration, TimeUnit.MILLISECONDS);
+    public void setJwt(String jti, long expiration) {
+        redisTemplate.opsForValue().set("JWT:" + jti, true, expiration, TimeUnit.MILLISECONDS);
     }
 
-    public boolean isJwtBlacklisted(String jti) {
+    public void removeJwt(String jti) {
+        redisTemplate.delete("JWT:" + jti);
+    }
+
+    public boolean isJwt(String jti) {
+        return redisTemplate.hasKey("JWT:" + jti);
+    }
+
+    // 사용자 블랙리스트 체크
+    public void addBlacklist(String email, String userName, long expiration) {
+        // 블랙리스트에 JWT의 JTI를 추가하고 만료 시간을 설정
+        redisTemplate.opsForValue()
+            .set("blacklist:" + email + ":" + userName, "invalid", expiration,
+                TimeUnit.MILLISECONDS);
+    }
+
+    // 사용자 블랙리스트 체크
+    public boolean isBlacklist(String email, String userName) {
         // Redis에 JTI가 있는지 확인
-        return redisTemplate.hasKey("blacklist:" + jti);
+        return redisTemplate.hasKey("blacklist:" + email + ":" + userName);
     }
 }

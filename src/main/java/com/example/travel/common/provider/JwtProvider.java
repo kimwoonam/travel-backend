@@ -1,4 +1,4 @@
-package com.example.travel.provider;
+package com.example.travel.common.provider;
 
 import io.jsonwebtoken.*;
 import io.jsonwebtoken.security.Keys;

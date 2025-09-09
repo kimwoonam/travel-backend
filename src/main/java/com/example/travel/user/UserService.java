@@ -1,7 +1,7 @@
 package com.example.travel.user;
 
 import com.example.travel.common.service.RedisService;
-import com.example.travel.provider.JwtProvider;
+import com.example.travel.common.provider.JwtProvider;
 import com.example.travel.user.dto.AuthDtos;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
@@ -50,25 +50,26 @@ public class UserService {
         }
 
         String token = jwtProvider.generateToken(user.getEmail(), user.getDisplayName());
+        redisService.setJwt(token, jwtProvider.getExpirationDate(token).getTime());
         return new AuthDtos.LoginResponse(token, user.getEmail(), user.getDisplayName());
     }
 
     @Transactional
-    public void deleteByEmail(String email, String password) {
+    public void deleteByEmail(String token, String email, String password) {
         User user = userRepository.findByEmail(email)
             .orElseThrow(() -> new IllegalArgumentException("User not found"));
         if (!passwordEncoder.matches(password, user.getPasswordHash())) {
             throw new IllegalArgumentException("Invalid password");
         }
         userRepository.delete(user);
+        redisService.removeJwt(jwtProvider.getJti(token));
     }
 
     public void logout(String token) {
         try {
             User user = userRepository.findByEmail(jwtProvider.getEmail(token))
                 .orElseThrow(() -> new IllegalArgumentException("User not found"));
-            redisService.addJwtBlacklist(jwtProvider.getJti(token),
-                jwtProvider.getExpirationDate(token).getTime());
+            redisService.removeJwt(jwtProvider.getJti(token));
         } catch (Exception e) {
             throw new IllegalArgumentException("Invalid token");
         }

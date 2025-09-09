@@ -2,9 +2,17 @@ package com.example.travel.user;
 
 import com.example.travel.user.dto.AuthDtos;
 import jakarta.validation.Valid;
+import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
+import org.springframework.http.ResponseCookie;
 import org.springframework.http.ResponseEntity;
-import org.springframework.web.bind.annotation.*;
+import org.springframework.web.bind.annotation.DeleteMapping;
+import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.RequestBody;
+import org.springframework.web.bind.annotation.RequestHeader;
+import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestParam;
+import org.springframework.web.bind.annotation.RestController;
 
 @RestController
 @RequestMapping("/api/auth")
@@ -28,19 +36,38 @@ public class UserController {
     @PostMapping("/login")
     public ResponseEntity<?> login(@Valid @RequestBody AuthDtos.LoginRequest request) {
         try {
-            return ResponseEntity.ok(userService.login(request));
+
+            ResponseCookie cookie = ResponseCookie.from("travel-jwt",
+                    userService.login(request).token)
+                .maxAge(3600)
+                .path("/")
+                .httpOnly(true)
+                .secure(false)
+                .sameSite("Strict")
+                .build();
+
+            HttpHeaders headers = new HttpHeaders();
+            headers.add(HttpHeaders.SET_COOKIE, String.valueOf(cookie));
+
+            return new ResponseEntity<>(userService.login(request), headers, HttpStatus.OK);
         } catch (IllegalArgumentException e) {
             return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(e.getMessage());
         }
     }
 
     @DeleteMapping("/delete")
-    public ResponseEntity<?> delete(@RequestParam String email, @RequestParam String password) {
+    public ResponseEntity<?> delete(@RequestHeader("Authorization") String authHeader,
+        @RequestParam String email, @RequestParam String password) {
         try {
-            userService.deleteByEmail(email, password);
-            return ResponseEntity.noContent().build();
+            if (authHeader != null && authHeader.startsWith("Bearer ")) {
+                String token = authHeader.substring(7);
+                userService.deleteByEmail(token, email, password);
+                return ResponseEntity.noContent().build();
+            } else {
+                return ResponseEntity.badRequest().body("유효하지 않은 토큰");
+            }
         } catch (IllegalArgumentException e) {
-            return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(e.getMessage());
+            return ResponseEntity.badRequest().body(e.getMessage());
         }
     }
 
@@ -50,12 +77,24 @@ public class UserController {
             if (authHeader != null && authHeader.startsWith("Bearer ")) {
                 String token = authHeader.substring(7);
                 userService.logout(token);
-                return ResponseEntity.ok().body("로그아웃 성공");
+
+                ResponseCookie cookie = ResponseCookie.from("travel-jwt", "")
+                    .maxAge(0)
+                    .path("/")
+                    .httpOnly(true)
+                    .secure(false)
+                    .sameSite("Strict")
+                    .build();
+
+                HttpHeaders headers = new HttpHeaders();
+                headers.add(HttpHeaders.SET_COOKIE, String.valueOf(cookie));
+
+                return new ResponseEntity<>(":로그아웃 성공", headers, HttpStatus.OK);
             } else {
                 return ResponseEntity.badRequest().body("유효하지 않은 토큰");
             }
         } catch (Exception e) {
-            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body("로그아웃 중 오류가 발생했습니다");
+            return ResponseEntity.internalServerError().body("로그아웃 중 오류가 발생했습니다");
         }
     }
 }
