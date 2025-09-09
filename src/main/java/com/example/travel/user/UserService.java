@@ -50,7 +50,7 @@ public class UserService {
         }
 
         String token = jwtProvider.generateToken(user.getEmail(), user.getDisplayName());
-        redisService.setJwt(token, jwtProvider.getExpirationDate(token).getTime());
+        redisService.setJwt(token);
         return new AuthDtos.LoginResponse(token, user.getEmail(), user.getDisplayName());
     }
 
@@ -62,14 +62,14 @@ public class UserService {
             throw new IllegalArgumentException("Invalid password");
         }
         userRepository.delete(user);
-        redisService.removeJwt(jwtProvider.getJti(token));
+        redisService.removeJwt(token);
     }
 
     public void logout(String token) {
         try {
             User user = userRepository.findByEmail(jwtProvider.getEmail(token))
                 .orElseThrow(() -> new IllegalArgumentException("User not found"));
-            redisService.removeJwt(jwtProvider.getJti(token));
+            redisService.removeJwt(token);
         } catch (Exception e) {
             throw new IllegalArgumentException("Invalid token");
         }

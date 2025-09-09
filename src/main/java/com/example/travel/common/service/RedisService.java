@@ -1,20 +1,23 @@
 package com.example.travel.common.service;
 
 import java.util.concurrent.TimeUnit;
+import org.apache.logging.log4j.LogManager;
+import org.apache.logging.log4j.Logger;
 import org.springframework.data.redis.core.RedisTemplate;
 import org.springframework.stereotype.Service;
 
 @Service
 public class RedisService {
 
+    private static final Logger log = LogManager.getLogger(RedisService.class);
     private final RedisTemplate<String, Object> redisTemplate;
 
     public RedisService(RedisTemplate<String, Object> redisTemplate) {
         this.redisTemplate = redisTemplate;
     }
 
-    public void setJwt(String jti, long expiration) {
-        redisTemplate.opsForValue().set("JWT:" + jti, true, expiration, TimeUnit.MILLISECONDS);
+    public void setJwt(String jti) {
+        redisTemplate.opsForValue().set("JWT:" + jti, true, 3600000, TimeUnit.MILLISECONDS);
     }
 
     public void removeJwt(String jti) {
@@ -26,10 +29,10 @@ public class RedisService {
     }
 
     // 사용자 블랙리스트 체크
-    public void addBlacklist(String email, String userName, long expiration) {
+    public void addBlacklist(String email, String userName) {
         // 블랙리스트에 JWT의 JTI를 추가하고 만료 시간을 설정
         redisTemplate.opsForValue()
-            .set("blacklist:" + email + ":" + userName, "invalid", expiration,
+            .set("blacklist:" + email + ":" + userName, "invalid", 3600000,
                 TimeUnit.MILLISECONDS);
     }
 
