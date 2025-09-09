@@ -54,7 +54,7 @@ public class JwtInterceptor implements HandlerInterceptor {
             return false;
         }
         // 2. Redis JWT 확인
-        if (!redisService.isJwt(jwtProvider.getJti(token))) {
+        if (!redisService.isJwt(token)) {
             log.error("Token is logged out.");
             response.setStatus(HttpServletResponse.SC_UNAUTHORIZED);
             return false;

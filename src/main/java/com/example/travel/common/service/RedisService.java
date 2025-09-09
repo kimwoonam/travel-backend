@@ -16,16 +16,16 @@ public class RedisService {
         this.redisTemplate = redisTemplate;
     }
 
-    public void setJwt(String jti) {
-        redisTemplate.opsForValue().set("JWT:" + jti, true, 3600000, TimeUnit.MILLISECONDS);
+    public void setJwt(String token) {
+        redisTemplate.opsForValue().set("JWT:" + token, true, 3600000, TimeUnit.MILLISECONDS);
     }
 
-    public void removeJwt(String jti) {
-        redisTemplate.delete("JWT:" + jti);
+    public void removeJwt(String token) {
+        redisTemplate.delete("JWT:" + token);
     }
 
-    public boolean isJwt(String jti) {
-        return redisTemplate.hasKey("JWT:" + jti);
+    public boolean isJwt(String token) {
+        return redisTemplate.hasKey("JWT:" + token);
     }
 
     // 사용자 블랙리스트 체크

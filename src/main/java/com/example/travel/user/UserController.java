@@ -62,7 +62,19 @@ public class UserController {
             if (authHeader != null && authHeader.startsWith("Bearer ")) {
                 String token = authHeader.substring(7);
                 userService.deleteByEmail(token, email, password);
-                return ResponseEntity.noContent().build();
+
+                ResponseCookie cookie = ResponseCookie.from("travel-jwt", "")
+                    .maxAge(0)
+                    .path("/")
+                    .httpOnly(true)
+                    .secure(false)
+                    .sameSite("Strict")
+                    .build();
+
+                HttpHeaders headers = new HttpHeaders();
+                headers.add(HttpHeaders.SET_COOKIE, String.valueOf(cookie));
+
+                return new ResponseEntity<>(null, headers, HttpStatus.NO_CONTENT);
             } else {
                 return ResponseEntity.badRequest().body("유효하지 않은 토큰");
             }
@@ -77,7 +89,19 @@ public class UserController {
             if (authHeader != null && authHeader.startsWith("Bearer ")) {
                 String token = authHeader.substring(7);
                 userService.logout(token);
-                return ResponseEntity.noContent().build();
+
+                ResponseCookie cookie = ResponseCookie.from("travel-jwt", "")
+                    .maxAge(0)
+                    .path("/")
+                    .httpOnly(true)
+                    .secure(false)
+                    .sameSite("Strict")
+                    .build();
+
+                HttpHeaders headers = new HttpHeaders();
+                headers.add(HttpHeaders.SET_COOKIE, String.valueOf(cookie));
+
+                return new ResponseEntity<>(null, headers, HttpStatus.NO_CONTENT);
             } else {
                 return ResponseEntity.badRequest().body("유효하지 않은 토큰");
             }

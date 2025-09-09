@@ -18,6 +18,8 @@ public class CorsConfig {
     @Bean
     public CorsFilter corsFilter() {
         CorsConfiguration config = new CorsConfiguration();
+        // config.setAllowCredentials(false);
+        // config.setAllowedOrigins(Arrays.asList("*"));
         config.setAllowCredentials(true);
         config.setAllowedOrigins(List.of(allowedOrigins.split(",")));
         config.addAllowedHeader("*");
