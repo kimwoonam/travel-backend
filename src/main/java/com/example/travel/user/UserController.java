@@ -37,8 +37,8 @@ public class UserController {
     public ResponseEntity<?> login(@Valid @RequestBody AuthDtos.LoginRequest request) {
         try {
 
-            ResponseCookie cookie = ResponseCookie.from("travel-jwt",
-                    userService.login(request).token)
+            AuthDtos.LoginResponse response = userService.login(request);
+            ResponseCookie cookie = ResponseCookie.from("travel-jwt", response.token)
                 .maxAge(3600)
                 .path("/")
                 .httpOnly(true)
@@ -49,7 +49,7 @@ public class UserController {
             HttpHeaders headers = new HttpHeaders();
             headers.add(HttpHeaders.SET_COOKIE, String.valueOf(cookie));
 
-            return new ResponseEntity<>(userService.login(request), headers, HttpStatus.OK);
+            return new ResponseEntity<>(response, headers, HttpStatus.OK);
         } catch (IllegalArgumentException e) {
             return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(e.getMessage());
         }
@@ -77,19 +77,7 @@ public class UserController {
             if (authHeader != null && authHeader.startsWith("Bearer ")) {
                 String token = authHeader.substring(7);
                 userService.logout(token);
-
-                ResponseCookie cookie = ResponseCookie.from("travel-jwt", "")
-                    .maxAge(0)
-                    .path("/")
-                    .httpOnly(true)
-                    .secure(false)
-                    .sameSite("Strict")
-                    .build();
-
-                HttpHeaders headers = new HttpHeaders();
-                headers.add(HttpHeaders.SET_COOKIE, String.valueOf(cookie));
-
-                return new ResponseEntity<>(":로그아웃 성공", headers, HttpStatus.OK);
+                return ResponseEntity.noContent().build();
             } else {
                 return ResponseEntity.badRequest().body("유효하지 않은 토큰");
             }
