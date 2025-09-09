@@ -4,6 +4,7 @@ import com.example.travel.common.service.RedisService;
 import com.example.travel.common.provider.JwtProvider;
 import com.example.travel.user.dto.AuthDtos;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.http.ResponseCookie;
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
@@ -73,5 +74,15 @@ public class UserService {
         } catch (Exception e) {
             throw new IllegalArgumentException("Invalid token");
         }
+    }
+
+    public ResponseCookie createCookie(String token) {
+        return ResponseCookie.from("travel-jwt", token)
+            .maxAge(3600)
+            .path("/")
+            .httpOnly(true)
+            .secure(false)
+            .sameSite("Strict")
+            .build();
     }
 }

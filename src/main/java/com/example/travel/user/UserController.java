@@ -38,14 +38,7 @@ public class UserController {
         try {
 
             AuthDtos.LoginResponse response = userService.login(request);
-            ResponseCookie cookie = ResponseCookie.from("travel-jwt", response.token)
-                .maxAge(3600)
-                .path("/")
-                .httpOnly(true)
-                .secure(false)
-                .sameSite("Strict")
-                .build();
-
+            ResponseCookie cookie = userService.createCookie(response.token);
             HttpHeaders headers = new HttpHeaders();
             headers.add(HttpHeaders.SET_COOKIE, String.valueOf(cookie));
 
@@ -63,14 +56,7 @@ public class UserController {
                 String token = authHeader.substring(7);
                 userService.deleteByEmail(token, email, password);
 
-                ResponseCookie cookie = ResponseCookie.from("travel-jwt", "")
-                    .maxAge(0)
-                    .path("/")
-                    .httpOnly(true)
-                    .secure(false)
-                    .sameSite("Strict")
-                    .build();
-
+                ResponseCookie cookie = userService.createCookie("");
                 HttpHeaders headers = new HttpHeaders();
                 headers.add(HttpHeaders.SET_COOKIE, String.valueOf(cookie));
 
@@ -90,17 +76,9 @@ public class UserController {
                 String token = authHeader.substring(7);
                 userService.logout(token);
 
-                ResponseCookie cookie = ResponseCookie.from("travel-jwt", "")
-                    .maxAge(0)
-                    .path("/")
-                    .httpOnly(true)
-                    .secure(false)
-                    .sameSite("Strict")
-                    .build();
-
+                ResponseCookie cookie = userService.createCookie("");
                 HttpHeaders headers = new HttpHeaders();
                 headers.add(HttpHeaders.SET_COOKIE, String.valueOf(cookie));
-
                 return new ResponseEntity<>(null, headers, HttpStatus.NO_CONTENT);
             } else {
                 return ResponseEntity.badRequest().body("유효하지 않은 토큰");
