@@ -2,7 +2,7 @@ package com.example.travel.user;
 
 import com.example.travel.common.provider.JwtProvider;
 import com.example.travel.common.provider.RedisProvider;
-import com.example.travel.user.dto.AuthDtos;
+import com.example.travel.user.dto.AuthDto;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.ResponseCookie;
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
@@ -27,7 +27,7 @@ public class UserService {
     }
 
     @Transactional
-    public AuthDtos.LoginResponse signup(AuthDtos.SignupRequest req) {
+    public AuthDto.LoginResponse signup(AuthDto.SignupRequest req) {
         userRepository.findByEmail(req.email).ifPresent(u -> {
             throw new IllegalArgumentException("Email already registered");
         });
@@ -38,12 +38,13 @@ public class UserService {
         user = userRepository.save(user);
 
         String token = jwtProvider.generateToken(user.getEmail(), user.getDisplayName());
+        redisProvider.setJwt(token);
         userRepository.save(user);
 
-        return new AuthDtos.LoginResponse(token, user.getEmail(), user.getDisplayName());
+        return new AuthDto.LoginResponse(token, user.getEmail(), user.getDisplayName());
     }
 
-    public AuthDtos.LoginResponse login(AuthDtos.LoginRequest req) {
+    public AuthDto.LoginResponse login(AuthDto.LoginRequest req) {
         User user = userRepository.findByEmail(req.email)
             .orElseThrow(() -> new IllegalArgumentException("Invalid credentials"));
         if (!passwordEncoder.matches(req.password, user.getPasswordHash())) {
@@ -52,7 +53,7 @@ public class UserService {
 
         String token = jwtProvider.generateToken(user.getEmail(), user.getDisplayName());
         redisProvider.setJwt(token);
-        return new AuthDtos.LoginResponse(token, user.getEmail(), user.getDisplayName());
+        return new AuthDto.LoginResponse(token, user.getEmail(), user.getDisplayName());
     }
 
     @Transactional
