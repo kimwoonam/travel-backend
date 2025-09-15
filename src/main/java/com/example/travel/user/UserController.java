@@ -41,8 +41,7 @@ public class UserController {
             ResponseCookie cookie = userService.createCookie(response.token);
             HttpHeaders headers = new HttpHeaders();
             headers.add(HttpHeaders.SET_COOKIE, String.valueOf(cookie));
-
-            return new ResponseEntity<>(response, headers, HttpStatus.OK);
+            return ResponseEntity.ok().headers(headers).body(response);
         } catch (IllegalArgumentException e) {
             return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(e.getMessage());
         }
@@ -60,7 +59,7 @@ public class UserController {
                 HttpHeaders headers = new HttpHeaders();
                 headers.add(HttpHeaders.SET_COOKIE, String.valueOf(cookie));
 
-                return new ResponseEntity<>(null, headers, HttpStatus.NO_CONTENT);
+                return ResponseEntity.noContent().headers(headers).build();
             } else {
                 return ResponseEntity.badRequest().body("유효하지 않은 토큰");
             }
@@ -79,7 +78,7 @@ public class UserController {
                 ResponseCookie cookie = userService.createCookie("");
                 HttpHeaders headers = new HttpHeaders();
                 headers.add(HttpHeaders.SET_COOKIE, String.valueOf(cookie));
-                return new ResponseEntity<>(null, headers, HttpStatus.NO_CONTENT);
+                return ResponseEntity.noContent().headers(headers).build();
             } else {
                 return ResponseEntity.badRequest().body("유효하지 않은 토큰");
             }

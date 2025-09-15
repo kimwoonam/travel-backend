@@ -1,7 +1,7 @@
 package com.example.travel.user;
 
-import com.example.travel.common.service.RedisService;
 import com.example.travel.common.provider.JwtProvider;
+import com.example.travel.common.provider.RedisProvider;
 import com.example.travel.user.dto.AuthDtos;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.ResponseCookie;
@@ -16,14 +16,14 @@ public class UserService {
     private final UserRepository userRepository;
     private final PasswordEncoder passwordEncoder = new BCryptPasswordEncoder();
     private final JwtProvider jwtProvider;
-    private final RedisService redisService;
+    private final RedisProvider redisProvider;
 
     @Autowired
     public UserService(UserRepository userRepository, JwtProvider jwtProvider,
-        RedisService redisService) {
+        RedisProvider redisProvider) {
         this.userRepository = userRepository;
         this.jwtProvider = jwtProvider;
-        this.redisService = redisService;
+        this.redisProvider = redisProvider;
     }
 
     @Transactional
@@ -51,7 +51,7 @@ public class UserService {
         }
 
         String token = jwtProvider.generateToken(user.getEmail(), user.getDisplayName());
-        redisService.setJwt(token);
+        redisProvider.setJwt(token);
         return new AuthDtos.LoginResponse(token, user.getEmail(), user.getDisplayName());
     }
 
@@ -63,14 +63,14 @@ public class UserService {
             throw new IllegalArgumentException("Invalid password");
         }
         userRepository.delete(user);
-        redisService.removeJwt(token);
+        redisProvider.removeJwt(token);
     }
 
-    public void logout(String token) {
+     public void logout(String token) {
         try {
             User user = userRepository.findByEmail(jwtProvider.getEmail(token))
                 .orElseThrow(() -> new IllegalArgumentException("User not found"));
-            redisService.removeJwt(token);
+            redisProvider.removeJwt(token);
         } catch (Exception e) {
             throw new IllegalArgumentException("Invalid token");
         }

@@ -1,13 +1,13 @@
 package com.example.travel.common.provider;
 
-import io.jsonwebtoken.*;
+import io.jsonwebtoken.JwtException;
+import io.jsonwebtoken.Jwts;
 import io.jsonwebtoken.security.Keys;
+import java.util.Date;
 import java.util.UUID;
+import javax.crypto.SecretKey;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Component;
-
-import javax.crypto.SecretKey;
-import java.util.Date;
 
 @Component
 public class JwtProvider {
@@ -27,13 +27,13 @@ public class JwtProvider {
         Date expiryDate = new Date(now.getTime() + expiration);
 
         return Jwts.builder()
-                .subject(email)
-                .claim("displayName", displayName)
-                .issuedAt(now)
-                .expiration(expiryDate)
-                .id(UUID.randomUUID().toString())
-                .signWith(getSigningKey())
-                .compact();
+            .subject(email)
+            .id(UUID.randomUUID().toString())
+            .claim("displayName", displayName)
+            .issuedAt(now)
+            .expiration(expiryDate)
+            .signWith(getSigningKey())
+            .compact();
     }
 
     public boolean validateToken(String token) {
@@ -59,20 +59,11 @@ public class JwtProvider {
 
     public String getDisplayName(String token) {
         return Jwts.parser()
-                .verifyWith(getSigningKey())
-                .build()
-                .parseSignedClaims(token)
-                .getPayload()
-                .get("displayName", String.class);
-    }
-
-    public String getJti(String token) {
-        return Jwts.parser()
             .verifyWith(getSigningKey())
             .build()
             .parseSignedClaims(token)
             .getPayload()
-            .getId();
+            .get("displayName", String.class);
     }
 
     public Date getExpirationDate(String token) {

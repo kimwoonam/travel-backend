@@ -1,7 +1,7 @@
 package com.example.travel.common.interceptor;
 
 import com.example.travel.common.provider.JwtProvider;
-import com.example.travel.common.service.RedisService;
+import com.example.travel.common.provider.RedisProvider;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import org.apache.logging.log4j.LogManager;
@@ -15,12 +15,12 @@ public class JwtInterceptor implements HandlerInterceptor {
 
     private static final Logger log = LogManager.getLogger(JwtInterceptor.class);
     private final JwtProvider jwtProvider;
-    private final RedisService redisService;
+    private final RedisProvider redisProvider;
 
     @Autowired
-    public JwtInterceptor(JwtProvider jwtProvider, RedisService redisService) {
+    public JwtInterceptor(JwtProvider jwtProvider, RedisProvider redisProvider) {
         this.jwtProvider = jwtProvider;
-        this.redisService = redisService;
+        this.redisProvider = redisProvider;
     }
 
     @Override
@@ -54,7 +54,7 @@ public class JwtInterceptor implements HandlerInterceptor {
             return false;
         }
         // 2. Redis JWT 확인
-        if (!redisService.isJwt(token)) {
+        if (!redisProvider.isJwt(token)) {
             log.error("Token is logged out.");
             response.setStatus(HttpServletResponse.SC_UNAUTHORIZED);
             return false;
@@ -63,7 +63,7 @@ public class JwtInterceptor implements HandlerInterceptor {
         String email = jwtProvider.getEmail(token);
         String userName = jwtProvider.getDisplayName(token);
         // 3. Redis에 등록된 블랙리스트 검증
-        if (redisService.isBlacklist(email, userName)) {
+        if (redisProvider.isBlacklist(email, userName)) {
             log.error("email : '{}', userName : '{}' is blacklisted.", email, userName);
             response.setStatus(HttpServletResponse.SC_UNAUTHORIZED);
             return false;

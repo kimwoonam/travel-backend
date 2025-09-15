@@ -31,11 +31,6 @@ public class BoardService {
         return boards;
     }
 
-    public Board getBoardById(Long id) {
-        return boardRepository.findById(id)
-            .orElseThrow(() -> new RuntimeException("게시글을 찾을 수 없습니다."));
-    }
-
     public Board getBoardByUuid(String uuid) {
         log.debug("getBoardByUuid : {}", uuid);
         Board board = boardRepository.findByUuid(uuid)

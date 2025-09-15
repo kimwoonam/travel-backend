@@ -1,4 +1,4 @@
-package com.example.travel.common.service;
+package com.example.travel.common.provider;
 
 import java.util.concurrent.TimeUnit;
 import org.apache.logging.log4j.LogManager;
@@ -7,12 +7,12 @@ import org.springframework.data.redis.core.RedisTemplate;
 import org.springframework.stereotype.Service;
 
 @Service
-public class RedisService {
+public class RedisProvider {
 
-    private static final Logger log = LogManager.getLogger(RedisService.class);
+    private static final Logger log = LogManager.getLogger(RedisProvider.class);
     private final RedisTemplate<String, Object> redisTemplate;
 
-    public RedisService(RedisTemplate<String, Object> redisTemplate) {
+    public RedisProvider(RedisTemplate<String, Object> redisTemplate) {
         this.redisTemplate = redisTemplate;
     }
 
