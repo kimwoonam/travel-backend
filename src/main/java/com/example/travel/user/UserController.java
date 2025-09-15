@@ -1,6 +1,6 @@
 package com.example.travel.user;
 
-import com.example.travel.user.dto.AuthDtos;
+import com.example.travel.user.dto.AuthDto;
 import jakarta.validation.Valid;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
@@ -25,7 +25,7 @@ public class UserController {
     }
 
     @PostMapping("/signup")
-    public ResponseEntity<?> signup(@Valid @RequestBody AuthDtos.SignupRequest request) {
+    public ResponseEntity<?> signup(@Valid @RequestBody AuthDto.SignupRequest request) {
         try {
             return ResponseEntity.status(HttpStatus.CREATED).body(userService.signup(request));
         } catch (IllegalArgumentException e) {
@@ -34,10 +34,10 @@ public class UserController {
     }
 
     @PostMapping("/login")
-    public ResponseEntity<?> login(@Valid @RequestBody AuthDtos.LoginRequest request) {
+    public ResponseEntity<?> login(@Valid @RequestBody AuthDto.LoginRequest request) {
         try {
 
-            AuthDtos.LoginResponse response = userService.login(request);
+            AuthDto.LoginResponse response = userService.login(request);
             ResponseCookie cookie = userService.createCookie(response.token);
             HttpHeaders headers = new HttpHeaders();
             headers.add(HttpHeaders.SET_COOKIE, String.valueOf(cookie));
