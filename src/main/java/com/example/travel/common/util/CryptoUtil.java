@@ -9,6 +9,10 @@ import org.apache.logging.log4j.Logger;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Component;
 
+/**
+ * AES 알고리즘을 사용하여 UUID를 암호화하고 복호화하는 유틸리티 클래스입니다.
+ * 암호화된 UUID 문자열을 암호화, 복호화하고 유효성을 검사하는 메서드를 제공합니다.
+ */
 @Component
 public class CryptoUtil {
 

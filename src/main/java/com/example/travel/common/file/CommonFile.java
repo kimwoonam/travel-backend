@@ -7,6 +7,7 @@ import jakarta.persistence.GenerationType;
 import jakarta.persistence.Id;
 import jakarta.persistence.PrePersist;
 import jakarta.persistence.Table;
+import jakarta.persistence.UniqueConstraint;
 import jakarta.validation.constraints.NotBlank;
 import java.time.LocalDateTime;
 import lombok.Getter;
@@ -17,7 +18,7 @@ import lombok.Setter;
 @Setter
 @Table(
     name = "common_file",
-    uniqueConstraints = @jakarta.persistence.UniqueConstraint(
+    uniqueConstraints = @UniqueConstraint(
         columnNames = {"table_name", "table_id"},
         name = "unique_table_name_table_id"
     )

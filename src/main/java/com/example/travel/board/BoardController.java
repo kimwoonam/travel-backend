@@ -1,5 +1,6 @@
 package com.example.travel.board;
 
+import com.example.travel.board.dto.BoardDto.BoardResponse;
 import com.example.travel.common.util.CryptoUtil;
 import java.util.Arrays;
 import java.util.List;
@@ -15,8 +16,14 @@ import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.PutMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
+import org.springframework.web.multipart.MultipartFile;
 
+/**
+ * 보드 작업과 관련된 HTTP 요청을 처리하는 컨트롤러 클래스입니다.
+ * CRUD 작업과 대량 삭제, 샘플 데이터 초기화와 같은 추가 기능을 위한 엔드포인트를 제공합니다.
+ */
 @RestController
 @RequestMapping("/api/boards")
 public class BoardController {
@@ -31,6 +38,12 @@ public class BoardController {
         this.cryptoUtil = cryptoUtil;
     }
 
+    /**
+     * 데이터베이스에서 모든 게시판 목록을 검색합니다.
+     * 게시판은 생성일을 기준으로 내림차순으로 정렬되며 UUID는 반환되기 전에 암호화됩니다.
+     *
+     * @return 암호화된 UUID가 있는 보드 목록을 포함하는 ResponseEntity입니다. 생성일을 기준으로 내림차순으로 정렬됩니다.
+     */
     @GetMapping
     public ResponseEntity<List<Board>> getAllBoards() {
         List<Board> boards = boardService.getAllBoards();
@@ -65,9 +78,10 @@ public class BoardController {
     }
 
     @PostMapping
-    public ResponseEntity<Board> createBoard(@RequestBody Board board) {
-        Board createdBoard = boardService.createBoard(board);
-        return ResponseEntity.ok(createdBoard);
+    @Transactional
+    public ResponseEntity<BoardResponse> createBoard(@RequestBody Board board,
+        @RequestParam("files") List<MultipartFile> files) {
+        return ResponseEntity.ok(boardService.createBoard(board, files));
     }
 
     @PutMapping("/{uuid}")
@@ -116,6 +130,14 @@ public class BoardController {
         }
     }
 
+    /**
+     * 애플리케이션의 샘플 데이터를 초기화합니다.
+     * 시스템에 데이터가 없는 경우 이 메서드는 미리 정의된 샘플 데이터 항목을 생성하여 추가합니다.
+     * 데이터가 이미 있는 경우 새로운 항목은 추가되지 않습니다.
+     *
+     * @return 샘플 데이터가 추가되면 성공 메시지를 포함하는 ResponseEntity, 데이터가 이미 존재함을 나타내는 메시지,
+     *         데이터 초기화 중 예외가 발생하면 오류 메시지를 포함하는 ResponseEntity입니다.
+     */
     @PostMapping("/init")
     public ResponseEntity<String> initializeSampleData() {
         try {

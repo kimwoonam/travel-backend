@@ -4,6 +4,10 @@ import java.security.SecureRandom;
 import java.util.Random;
 import org.springframework.stereotype.Component;
 
+/**
+ * 유틸리티 클래스 RandomGeneratorUtil은 무작위 문자열을 생성하는 기능을 제공합니다.
+ * 보안상 더 강력한 무작위성을 제공하기 위해 SecureRandom을 활용합니다.
+ */
 @Component
 public class RandomGeneratorUtil {
 
