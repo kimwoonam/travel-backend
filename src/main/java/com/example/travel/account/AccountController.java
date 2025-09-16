@@ -2,6 +2,7 @@ package com.example.travel.account;
 
 import com.example.travel.account.dto.AccountDto;
 import jakarta.validation.Valid;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseCookie;
@@ -20,6 +21,7 @@ public class AccountController {
 
     private final AccountService accountService;
 
+    @Autowired
     public AccountController(AccountService accountService) {
         this.accountService = accountService;
     }
@@ -27,7 +29,13 @@ public class AccountController {
     @PostMapping("/signup")
     public ResponseEntity<?> signup(@Valid @RequestBody AccountDto.SignupRequest request) {
         try {
-            return ResponseEntity.status(HttpStatus.CREATED).body(accountService.signup(request));
+
+            AccountDto.LoginResponse response = accountService.signup(request);
+            ResponseCookie cookie = accountService.createCookie(response.token);
+            HttpHeaders headers = new HttpHeaders();
+            headers.add(HttpHeaders.SET_COOKIE, String.valueOf(cookie));
+
+            return ResponseEntity.status(HttpStatus.CREATED).headers(headers).body(response);
         } catch (IllegalArgumentException e) {
             return ResponseEntity.status(HttpStatus.CONFLICT).body(e.getMessage());
         }
