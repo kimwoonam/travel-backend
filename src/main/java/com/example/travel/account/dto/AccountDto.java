@@ -1,10 +1,10 @@
-package com.example.travel.user.dto;
+package com.example.travel.account.dto;
 
 import jakarta.validation.constraints.Email;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.Size;
 
-public class AuthDto {
+public class AccountDto {
 
     public static class SignupRequest {
 
@@ -17,7 +17,7 @@ public class AuthDto {
         public String password;
 
         @NotBlank
-        public String displayName;
+        public String name;
     }
 
     public static class LoginRequest {
@@ -34,12 +34,12 @@ public class AuthDto {
 
         public String token;
         public String email;
-        public String displayName;
+        public String name;
 
-        public LoginResponse(String token, String email, String displayName) {
+        public LoginResponse(String token, String email, String name) {
             this.token = token;
             this.email = email;
-            this.displayName = displayName;
+            this.name = name;
         }
     }
 }

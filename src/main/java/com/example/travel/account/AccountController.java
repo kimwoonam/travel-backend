@@ -1,6 +1,6 @@
-package com.example.travel.user;
+package com.example.travel.account;
 
-import com.example.travel.user.dto.AuthDto;
+import com.example.travel.account.dto.AccountDto;
 import jakarta.validation.Valid;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
@@ -16,29 +16,29 @@ import org.springframework.web.bind.annotation.RestController;
 
 @RestController
 @RequestMapping("/api/auth")
-public class UserController {
+public class AccountController {
 
-    private final UserService userService;
+    private final AccountService accountService;
 
-    public UserController(UserService userService) {
-        this.userService = userService;
+    public AccountController(AccountService accountService) {
+        this.accountService = accountService;
     }
 
     @PostMapping("/signup")
-    public ResponseEntity<?> signup(@Valid @RequestBody AuthDto.SignupRequest request) {
+    public ResponseEntity<?> signup(@Valid @RequestBody AccountDto.SignupRequest request) {
         try {
-            return ResponseEntity.status(HttpStatus.CREATED).body(userService.signup(request));
+            return ResponseEntity.status(HttpStatus.CREATED).body(accountService.signup(request));
         } catch (IllegalArgumentException e) {
             return ResponseEntity.status(HttpStatus.CONFLICT).body(e.getMessage());
         }
     }
 
     @PostMapping("/login")
-    public ResponseEntity<?> login(@Valid @RequestBody AuthDto.LoginRequest request) {
+    public ResponseEntity<?> login(@Valid @RequestBody AccountDto.LoginRequest request) {
         try {
 
-            AuthDto.LoginResponse response = userService.login(request);
-            ResponseCookie cookie = userService.createCookie(response.token);
+            AccountDto.LoginResponse response = accountService.login(request);
+            ResponseCookie cookie = accountService.createCookie(response.token);
             HttpHeaders headers = new HttpHeaders();
             headers.add(HttpHeaders.SET_COOKIE, String.valueOf(cookie));
             return ResponseEntity.ok().headers(headers).body(response);
@@ -53,9 +53,9 @@ public class UserController {
         try {
             if (authHeader != null && authHeader.startsWith("Bearer ")) {
                 String token = authHeader.substring(7);
-                userService.deleteByEmail(token, email, password);
+                accountService.deleteByEmail(token, email, password);
 
-                ResponseCookie cookie = userService.createCookie("");
+                ResponseCookie cookie = accountService.createCookie("");
                 HttpHeaders headers = new HttpHeaders();
                 headers.add(HttpHeaders.SET_COOKIE, String.valueOf(cookie));
 
@@ -73,9 +73,9 @@ public class UserController {
         try {
             if (authHeader != null && authHeader.startsWith("Bearer ")) {
                 String token = authHeader.substring(7);
-                userService.logout(token);
+                accountService.logout(token);
 
-                ResponseCookie cookie = userService.createCookie("");
+                ResponseCookie cookie = accountService.createCookie("");
                 HttpHeaders headers = new HttpHeaders();
                 headers.add(HttpHeaders.SET_COOKIE, String.valueOf(cookie));
                 return ResponseEntity.noContent().headers(headers).build();

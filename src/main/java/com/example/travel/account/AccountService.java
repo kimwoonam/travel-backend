@@ -1,8 +1,8 @@
-package com.example.travel.user;
+package com.example.travel.account;
 
 import com.example.travel.common.provider.JwtProvider;
 import com.example.travel.common.provider.RedisProvider;
-import com.example.travel.user.dto.AuthDto;
+import com.example.travel.account.dto.AccountDto;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.ResponseCookie;
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
@@ -11,65 +11,65 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 @Service
-public class UserService {
+public class AccountService {
 
-    private final UserRepository userRepository;
+    private final AccountRepository accountRepository;
     private final PasswordEncoder passwordEncoder = new BCryptPasswordEncoder();
     private final JwtProvider jwtProvider;
     private final RedisProvider redisProvider;
 
     @Autowired
-    public UserService(UserRepository userRepository, JwtProvider jwtProvider,
+    public AccountService(AccountRepository accountRepository, JwtProvider jwtProvider,
         RedisProvider redisProvider) {
-        this.userRepository = userRepository;
+        this.accountRepository = accountRepository;
         this.jwtProvider = jwtProvider;
         this.redisProvider = redisProvider;
     }
 
     @Transactional
-    public AuthDto.LoginResponse signup(AuthDto.SignupRequest req) {
-        userRepository.findByEmail(req.email).ifPresent(u -> {
+    public AccountDto.LoginResponse signup(AccountDto.SignupRequest req) {
+        accountRepository.findByEmail(req.email).ifPresent(u -> {
             throw new IllegalArgumentException("Email already registered");
         });
-        User user = new User();
-        user.setEmail(req.email);
-        user.setDisplayName(req.displayName);
-        user.setPasswordHash(passwordEncoder.encode(req.password));
-        user = userRepository.save(user);
+        Account account = new Account();
+        account.setEmail(req.email);
+        account.setName(req.name);
+        account.setPasswordHash(passwordEncoder.encode(req.password));
+        account = accountRepository.save(account);
 
-        String token = jwtProvider.generateToken(user.getEmail(), user.getDisplayName());
+        String token = jwtProvider.generateToken(account.getEmail(), account.getName());
         redisProvider.setJwt(token);
-        userRepository.save(user);
+        accountRepository.save(account);
 
-        return new AuthDto.LoginResponse(token, user.getEmail(), user.getDisplayName());
+        return new AccountDto.LoginResponse(token, account.getEmail(), account.getName());
     }
 
-    public AuthDto.LoginResponse login(AuthDto.LoginRequest req) {
-        User user = userRepository.findByEmail(req.email)
+    public AccountDto.LoginResponse login(AccountDto.LoginRequest req) {
+        Account account = accountRepository.findByEmail(req.email)
             .orElseThrow(() -> new IllegalArgumentException("Invalid credentials"));
-        if (!passwordEncoder.matches(req.password, user.getPasswordHash())) {
+        if (!passwordEncoder.matches(req.password, account.getPasswordHash())) {
             throw new IllegalArgumentException("Invalid credentials");
         }
 
-        String token = jwtProvider.generateToken(user.getEmail(), user.getDisplayName());
+        String token = jwtProvider.generateToken(account.getEmail(), account.getName());
         redisProvider.setJwt(token);
-        return new AuthDto.LoginResponse(token, user.getEmail(), user.getDisplayName());
+        return new AccountDto.LoginResponse(token, account.getEmail(), account.getName());
     }
 
     @Transactional
     public void deleteByEmail(String token, String email, String password) {
-        User user = userRepository.findByEmail(email)
+        Account account = accountRepository.findByEmail(email)
             .orElseThrow(() -> new IllegalArgumentException("User not found"));
-        if (!passwordEncoder.matches(password, user.getPasswordHash())) {
+        if (!passwordEncoder.matches(password, account.getPasswordHash())) {
             throw new IllegalArgumentException("Invalid password");
         }
-        userRepository.delete(user);
+        accountRepository.delete(account);
         redisProvider.removeJwt(token);
     }
 
      public void logout(String token) {
         try {
-            User user = userRepository.findByEmail(jwtProvider.getEmail(token))
+            Account account = accountRepository.findByEmail(jwtProvider.getEmail(token))
                 .orElseThrow(() -> new IllegalArgumentException("User not found"));
             redisProvider.removeJwt(token);
         } catch (Exception e) {

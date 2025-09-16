@@ -48,7 +48,7 @@
 │   │   │   │   ├── JwtUtil.java
 │   │   │   │   ├── UuidCryptoUtil.java
 │   │   │   │   └── WebConfig.java
-│   │   │   ├── user
+│   │   │   ├── account
 │   │   │   │   ├── dto
 │   │   │   │   │   └── AuthDtos.java // Jwt Respose DTO
 │   │   │   │   ├── User.java
