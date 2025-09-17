@@ -1,8 +1,10 @@
 package com.example.travel.account;
 
+import com.example.travel.account.dto.AccountDto.LoginResponse;
 import com.example.travel.common.provider.JwtProvider;
 import com.example.travel.common.provider.RedisProvider;
 import com.example.travel.account.dto.AccountDto;
+import java.util.UUID;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.ResponseCookie;
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
@@ -40,11 +42,12 @@ public class AccountService {
      * @throws IllegalArgumentException 이메일이 이미 등록되어 있는 경우 발생
      */
     @Transactional
-    public AccountDto.LoginResponse signup(AccountDto.SignupRequest req) {
+    public LoginResponse signup(AccountDto.SignupRequest req) {
         accountRepository.findByEmail(req.email).ifPresent(u -> {
             throw new IllegalArgumentException("Email already registered");
         });
         Account account = new Account();
+        account.setUuid(UUID.randomUUID().toString());
         account.setEmail(req.email);
         account.setName(req.name);
         account.setPasswordHash(passwordEncoder.encode(req.password));
@@ -52,9 +55,10 @@ public class AccountService {
 
         String token = jwtProvider.generateToken(account.getEmail(), account.getName());
         redisProvider.setJwt(token);
+        redisProvider.setUserInfo(account);
         accountRepository.save(account);
 
-        return new AccountDto.LoginResponse(token, account.getEmail(), account.getName());
+        return new LoginResponse(token, account.getEmail(), account.getName());
     }
 
     /**
@@ -66,7 +70,7 @@ public class AccountService {
      * @return 생성된 토큰, 사용자의 이메일, 이름을 포함하는 LoginResponse 객체를 반환
      * @throws IllegalArgumentException 이메일을 찾을 수 없거나 비밀번호가 저장된 해시와 일치하지 않으면 발생
      */
-    public AccountDto.LoginResponse login(AccountDto.LoginRequest req) {
+    public LoginResponse login(AccountDto.LoginRequest req) {
         Account account = accountRepository.findByEmail(req.email)
             .orElseThrow(() -> new IllegalArgumentException("Invalid credentials"));
         if (!passwordEncoder.matches(req.password, account.getPasswordHash())) {
@@ -75,7 +79,8 @@ public class AccountService {
 
         String token = jwtProvider.generateToken(account.getEmail(), account.getName());
         redisProvider.setJwt(token);
-        return new AccountDto.LoginResponse(token, account.getEmail(), account.getName());
+        redisProvider.setUserInfo(account);
+        return new LoginResponse(token, account.getEmail(), account.getName());
     }
 
     /**
@@ -94,8 +99,9 @@ public class AccountService {
         if (!passwordEncoder.matches(password, account.getPasswordHash())) {
             throw new IllegalArgumentException("Invalid password");
         }
-        accountRepository.delete(account);
+        redisProvider.removeUserInfo(account.getEmail());
         redisProvider.removeJwt(token);
+        accountRepository.delete(account);
     }
 
     /**
@@ -109,6 +115,7 @@ public class AccountService {
         try {
             Account account = accountRepository.findByEmail(jwtProvider.getEmail(token))
                 .orElseThrow(() -> new IllegalArgumentException("User not found"));
+            redisProvider.removeUserInfo(account.getEmail());
             redisProvider.removeJwt(token);
         } catch (Exception e) {
             throw new IllegalArgumentException("Invalid token");

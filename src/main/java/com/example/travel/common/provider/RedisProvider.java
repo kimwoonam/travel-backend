@@ -1,8 +1,10 @@
 package com.example.travel.common.provider;
 
+import com.example.travel.account.Account;
+import com.fasterxml.jackson.databind.ObjectMapper;
+import java.util.HashMap;
+import java.util.Map;
 import java.util.concurrent.TimeUnit;
-import org.apache.logging.log4j.LogManager;
-import org.apache.logging.log4j.Logger;
 import org.springframework.data.redis.core.RedisTemplate;
 import org.springframework.stereotype.Component;
 
@@ -19,7 +21,6 @@ import org.springframework.stereotype.Component;
 @Component
 public class RedisProvider {
 
-    private static final Logger log = LogManager.getLogger(RedisProvider.class);
     private final RedisTemplate<String, Object> redisTemplate;
 
     public RedisProvider(RedisTemplate<String, Object> redisTemplate) {
@@ -36,7 +37,6 @@ public class RedisProvider {
     }
 
     /**
-     *
      * Redis 캐시에서 지정된 JWT 토큰을 제거합니다.
      *
      * @param token Redis 캐시에서 제거할 JWT 토큰
@@ -53,6 +53,44 @@ public class RedisProvider {
      */
     public boolean isJwt(String token) {
         return redisTemplate.hasKey("JWT:" + token);
+    }
+
+    /**
+     * 사용자 정보를 Redis 캐시에 저장합니다. 이 정보에는 사용자의 이메일, 이름, UUID가 포함됩니다.
+     * 데이터는 1시간 후 만료되도록 설정됩니다.
+     *
+     * @param account Redis에 저장될 사용자 정보를 포함하는 계정 객체입니다. 이메일, 이름, UUID를 속성으로 포함합니다.
+     */
+    public void setUserInfo(Account account) {
+        Map<String, Object> userInfo = new HashMap<>();
+        userInfo.put("email", account.getEmail());
+        userInfo.put("name", account.getName());
+        userInfo.put("uuid", account.getUuid());
+
+        redisTemplate.opsForHash().putAll("USERINFO:" + account.getEmail(), userInfo);
+        redisTemplate.expire("USERINFO:" + account.getEmail(), 3600000, TimeUnit.MILLISECONDS);
+    }
+
+    /**
+     * Redis 캐시에서 사용자 정보를 검색하여 Account 객체에 매핑합니다.
+     *
+     * @param email 정보를 검색할 사용자의 이메일 주소
+     * @return 캐시에서 검색된 사용자 정보가 포함된 Account 객체를 반환
+     */
+    public Account getUserInfo(String email) {
+
+        // redisTemplate.opsForHash().get("USERINFO:" + email, "EMAIL")
+        Map<Object, Object> userInfo = redisTemplate.opsForHash().entries("USERINFO:" + email);
+        return new ObjectMapper().convertValue(userInfo, Account.class);
+    }
+
+    /**
+     * 지정된 이메일 주소와 연관된 사용자 정보를 Redis 캐시에서 제거합니다.
+     *
+     * @param email Redis 캐시에서 정보를 제거해야 하는 사용자의 이메일 주소
+     */
+    public void removeUserInfo(String email) {
+        redisTemplate.delete("USERINFO:" + email);
     }
 
     /**

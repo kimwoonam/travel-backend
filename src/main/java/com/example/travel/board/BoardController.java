@@ -80,8 +80,8 @@ public class BoardController {
     @PostMapping
     @Transactional
     public ResponseEntity<BoardResponse> createBoard(@RequestBody Board board,
-        @RequestParam("files") List<MultipartFile> files) {
-        return ResponseEntity.ok(boardService.createBoard(board, files));
+        @RequestParam("email") String email, @RequestParam("files") List<MultipartFile> files) {
+        return ResponseEntity.ok(boardService.createBoard(board, email, files));
     }
 
     @PutMapping("/{uuid}")
@@ -139,7 +139,7 @@ public class BoardController {
      *         데이터 초기화 중 예외가 발생하면 오류 메시지를 포함하는 ResponseEntity입니다.
      */
     @PostMapping("/init")
-    public ResponseEntity<String> initializeSampleData() {
+    public ResponseEntity<String> initializeSampleData(@RequestParam("email") String email) {
         try {
             // 기존 데이터가 없을 때만 샘플 데이터 추가
             if (boardService.getAllBoards().isEmpty()) {
@@ -147,18 +147,18 @@ public class BoardController {
                 board1.setTitle("여행 후기 - 제주도");
                 board1.setContent(
                     "제주도 여행을 다녀왔습니다. 한라산 등반과 해변 산책이 정말 멋졌어요. 특히 성산일출봉에서 본 일출은 잊을 수 없습니다.");
-                board1.setAuthor("여행자1");
+                board1.setNickName("여행자1");
 
                 Board board2 = new Board();
                 board2.setTitle("맛집 추천 - 부산");
                 board2.setContent("부산 여행 중 발견한 맛집들을 소개합니다. 해운대 해산물, 광안리 회, 서면 닭갈비 등 정말 맛있었어요!");
-                board2.setAuthor("맛집탐험가");
+                board2.setNickName("맛집탐험가");
 
                 Board board3 = new Board();
                 board3.setTitle("서울 관광지 추천");
                 board3.setContent(
                     "서울 여행 필수 코스! 경복궁, 남산타워, 홍대, 명동 등을 추천합니다. 특히 봄철 벚꽃이 피는 시기가 최고예요.");
-                board3.setAuthor("서울가이드");
+                board3.setNickName("서울가이드");
 
                 boardService.createBoard(board1);
                 boardService.createBoard(board2);

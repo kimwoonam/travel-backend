@@ -6,12 +6,15 @@ import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
+import java.time.LocalDate;
+import java.time.format.DateTimeFormatter;
 import java.util.List;
 import java.util.Objects;
 import java.util.UUID;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Component;
 import org.springframework.web.multipart.MultipartFile;
 
@@ -35,6 +38,9 @@ public class CommonFileService {
     private final CommonFileRepository commonFileRepository;
     private final CryptoUtil cryptoUtil;
 
+    @Value( "${file.upload.path:classpath:upload/}")
+    private String fileUploadPath;
+
     @Autowired
     public CommonFileService(CommonFileRepository commonFileRepository, CryptoUtil cryptoUtil) {
         this.commonFileRepository = commonFileRepository;
@@ -57,6 +63,18 @@ public class CommonFileService {
     }
 
     /**
+     * 특정 테이블 이름 및 테이블 ID와 연결된 파일을 데이터베이스에서 "소프트 삭제됨"으로 표시합니다.
+     * 이 메서드는 `deleteYn` 필드를 'Y'로 수정하고
+     * `CommonFile` 테이블의 해당 레코드에 대한 `deletedAt` 타임스탬프를 업데이트합니다.
+     *
+     * @param tableName 소프트 삭제할 파일과 연관된 테이블의 이름입니다.
+     * @param tableId 소프트 삭제할 파일과 연관된 테이블의 ID입니다.
+     */
+    public void softDeleteCommonFileBulk(String tableName, Long tableId) {
+        commonFileRepository.updateDeleteStatusByTableNameAndTableId(tableName, tableId);
+    }
+
+    /**
      * 지정된 디렉터리에 파일을 저장하고 파일 메타데이터로 {@code CommonFile} 엔터티를 업데이트합니다. 이 메서드는 디렉터리 존재 여부를 확인하고 저장하기 전에
      * 고유한 파일 이름을 지정합니다. 처리 중 오류가 발생하면 파일이 삭제되고 {@code RuntimeException}이 발생합니다.
      *
@@ -71,9 +89,19 @@ public class CommonFileService {
             throw new RuntimeException("업로드할 파일을 선택해 주세요.");
         }
 
-        String dirPath = "/path/to/file/";
+        String dirPath = "";
+
         try {
 
+            LocalDate today = LocalDate.now();
+
+            // Define the desired format
+            DateTimeFormatter formatter = DateTimeFormatter.ofPattern("yyyyMMdd");
+
+            // Format the date
+            String formattedDate = today.format(formatter);
+
+            dirPath = fileUploadPath + formattedDate + "/";
             Path path = Path.of(dirPath);
             // 디렉토리 체크
             if (!Files.isDirectory(path)) {
@@ -81,15 +109,15 @@ public class CommonFileService {
                 Files.createDirectories(path);
             }
 
+
             if (Objects.requireNonNull(file.getOriginalFilename()).lastIndexOf(".") < 0) {
                 log.error("파일 확장자를 찾을 수 없습니다.");
                 throw new RuntimeException("파일 확장자를 찾을 수 없습니다.");
             }
 
             Path filePath = Paths.get(dirPath + commonFile.getChangeFileName());
-            Files.write(filePath, file.getBytes());
             commonFile.setUuid(UUID.randomUUID().toString());
-            commonFile.setFilePath(filePath.toString());
+            commonFile.setFilePath(dirPath);
             commonFile.setFileSize(file.getSize());
             commonFile.setChangeFileName(RandomGeneratorUtil.generateRandomString(30));
             commonFile.setOriginalFileName(file.getOriginalFilename());
@@ -97,6 +125,7 @@ public class CommonFileService {
                 .substring(file.getOriginalFilename().lastIndexOf(".") + 1));
 
             commonFileRepository.save(commonFile);
+            Files.write(filePath, file.getBytes());
 
         } catch (IOException e) {
             throw new RuntimeException(e);

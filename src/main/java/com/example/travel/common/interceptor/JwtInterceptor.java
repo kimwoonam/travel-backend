@@ -100,13 +100,13 @@ public class JwtInterceptor implements HandlerInterceptor {
         String userName = jwtProvider.getDisplayName(token);
         // 3. Redis에 등록된 블랙리스트 검증
         if (redisProvider.isBlacklist(email, userName)) {
-            log.error("email : '{}', userName : '{}' is blacklisted.", email, userName);
+            log.error("email : '{}', name : '{}' is blacklisted.", email, userName);
             response.setStatus(HttpServletResponse.SC_UNAUTHORIZED);
             return false;
         }
 
-        request.setAttribute("userEmail", email);
-        request.setAttribute("displayName", userName);
+        request.setAttribute("email", email);
+        request.setAttribute("name", userName);
 
         return true;
     }

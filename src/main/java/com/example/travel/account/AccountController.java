@@ -1,6 +1,7 @@
 package com.example.travel.account;
 
 import com.example.travel.account.dto.AccountDto;
+import com.example.travel.account.dto.AccountDto.LoginResponse;
 import jakarta.validation.Valid;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpHeaders;
@@ -52,7 +53,7 @@ public class AccountController {
     public ResponseEntity<?> signup(@Valid @RequestBody AccountDto.SignupRequest request) {
         try {
 
-            AccountDto.LoginResponse response = accountService.signup(request);
+            LoginResponse response = accountService.signup(request);
             ResponseCookie cookie = accountService.createCookie(response.token);
             HttpHeaders headers = new HttpHeaders();
             headers.add(HttpHeaders.SET_COOKIE, String.valueOf(cookie));
@@ -76,7 +77,7 @@ public class AccountController {
     public ResponseEntity<?> login(@Valid @RequestBody AccountDto.LoginRequest request) {
         try {
 
-            AccountDto.LoginResponse response = accountService.login(request);
+            LoginResponse response = accountService.login(request);
             ResponseCookie cookie = accountService.createCookie(response.token);
             HttpHeaders headers = new HttpHeaders();
             headers.add(HttpHeaders.SET_COOKIE, String.valueOf(cookie));

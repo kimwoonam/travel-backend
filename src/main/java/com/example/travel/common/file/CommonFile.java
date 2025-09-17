@@ -12,6 +12,7 @@ import jakarta.validation.constraints.NotBlank;
 import java.time.LocalDateTime;
 import lombok.Getter;
 import lombok.Setter;
+import org.hibernate.annotations.Comment;
 
 @Entity
 @Getter
@@ -31,37 +32,56 @@ public class CommonFile {
 
     @NotBlank
     @Column(unique = true, nullable = false)
+    @Comment("SELECT, DELETE, UPDATE에서 사용될 UUID")
     private String uuid;
 
     @NotBlank
     @Column(name = "table_name", nullable = false)
+    @Comment("등록한 테이블 이름")
     private String tableName;
 
     @NotBlank
     @Column(name = "table_id", nullable = false)
+    @Comment("등록한 테이블의 ID")
     private Long tableId;
 
     @NotBlank
     @Column(name = "original_file_name", nullable = false)
+    @Comment("원본 파일 이름")
     private String originalFileName;
 
     @NotBlank
     @Column(name = "change_file_name", nullable = false)
+    @Comment("변경된 파일 이름")
     private String changeFileName;
 
     @NotBlank
     @Column(name = "file_path", nullable = false)
+    @Comment("파일경로")
     private String filePath;
 
     @NotBlank
     @Column(name = "file_size", nullable = false)
+    @Comment("파일크기")
     private long fileSize;
 
     @NotBlank
     @Column(name = "file_extension", nullable = false)
+    @Comment("파일확장자")
     private String fileExtension;
 
+    @NotBlank
+    @Column(name = "delete_yn", nullable = false, columnDefinition = "VARCHAR(2) DEFAULT 'N'")
+    @Comment("삭제여부 (Y: 삭제, N: 미삭제)")
+    private String deleteYn;
+
+    @NotBlank
+    @Column(name = "deleted_at")
+    @Comment("삭제일시")
+    private LocalDateTime deletedAt;
+
     @Column(name = "created_at")
+    @Comment("등록일시")
     private LocalDateTime createdAt;
 
     @PrePersist
