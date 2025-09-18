@@ -2,8 +2,10 @@ package com.example.travel.board;
 
 import com.example.travel.board.dto.BoardDto.BoardResponse;
 import com.example.travel.common.util.CryptoUtil;
+import jakarta.servlet.http.HttpServletRequest;
 import java.util.Arrays;
 import java.util.List;
+import java.util.Objects;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -53,8 +55,6 @@ public class BoardController {
     @GetMapping("/{uuid}")
     public ResponseEntity<Board> getBoardByUuid(@PathVariable String uuid) {
 
-        log.info("getBoardByUuid : {}", uuid);
-
         try {
             Board board;
 
@@ -63,36 +63,44 @@ public class BoardController {
                 // 암호화된 UUID로 직접 조회
                 String uuidDecrypted = cryptoUtil.decrypt(uuid);
                 board = boardService.getBoardByUuid(uuidDecrypted);
-                log.debug("암호화된 UUID로 조회: {}", uuid);
             } else {
                 // 일반 UUID로 조회 후 암호화하여 반환
-                log.error("암호화 되지않은 UUID로 조회: {}", uuid);
+                log.error("암호화 되지않은 UUID로 조회");
                 throw new RuntimeException("게시글을 찾을 수 없습니다.");
             }
 
             return ResponseEntity.ok(board);
         } catch (RuntimeException e) {
-            log.error("게시글 조회 중 오류 발생: {}", e.getMessage());
+            log.error(e.getMessage());
             return ResponseEntity.notFound().build();
         }
     }
 
     @PostMapping
     @Transactional
-    public ResponseEntity<BoardResponse> createBoard(@RequestBody Board board,
-        @RequestParam("email") String email, @RequestParam("files") List<MultipartFile> files) {
-        return ResponseEntity.ok(boardService.createBoard(board, email, files));
+    public ResponseEntity<BoardResponse> createBoard(HttpServletRequest request,
+        @RequestBody Board board, @RequestParam("files") List<MultipartFile> files) {
+
+        return ResponseEntity.ok(
+            boardService.createBoard(board, request.getAttribute("email").toString(), files));
     }
 
     @PutMapping("/{uuid}")
-    public ResponseEntity<Board> updateBoard(@PathVariable String uuid,
+    public ResponseEntity<Board> updateBoard(HttpServletRequest request, @PathVariable String uuid,
         @RequestBody Board boardDetails) {
+
         try {
-            log.info("updateBoard - 받은 UUID: {}", uuid);
-            Board updatedBoard = boardService.updateBoard(uuid, boardDetails);
+            if (Objects.isNull(request.getAttribute("email"))) {
+                log.error("Not logged in");
+                throw new RuntimeException("Not logged in");
+            }
+
+            String email = request.getAttribute("email").toString();
+
+            Board updatedBoard = boardService.updateBoard(email, uuid, boardDetails);
             return ResponseEntity.ok(updatedBoard);
         } catch (RuntimeException e) {
-            log.error("게시글 수정 중 오류 발생: {}", e.getMessage());
+            log.error(e.getMessage());
             return ResponseEntity.notFound().build();
         }
     }
@@ -100,11 +108,10 @@ public class BoardController {
     @DeleteMapping("/{uuid}")
     public ResponseEntity<Void> deleteBoard(@PathVariable String uuid) {
         try {
-            log.info("deleteBoard - 받은 UUID: {}", uuid);
             boardService.deleteBoard(uuid);
             return ResponseEntity.ok().build();
         } catch (RuntimeException e) {
-            log.error("게시글 삭제 중 오류 발생: {}", e.getMessage());
+            log.error(e.getMessage());
             return ResponseEntity.notFound().build();
         }
     }
@@ -120,12 +127,10 @@ public class BoardController {
             }
 
             List<String> uuids = Arrays.asList(uuid.split(","));
-
-            log.info("deleteBoardByUuids - 받은 UUIDs: {}", uuids);
             boardService.deleteBoardBulk(uuids);
             return ResponseEntity.noContent().build();
         } catch (RuntimeException e) {
-            log.error("게시글 삭제 중 오류 발생: {}", e.getMessage());
+            log.error(e.getMessage());
             return ResponseEntity.notFound().build();
         }
     }
@@ -139,8 +144,17 @@ public class BoardController {
      *         데이터 초기화 중 예외가 발생하면 오류 메시지를 포함하는 ResponseEntity입니다.
      */
     @PostMapping("/init")
-    public ResponseEntity<String> initializeSampleData(@RequestParam("email") String email) {
+    public ResponseEntity<String> initializeSampleData(HttpServletRequest request) {
+
         try {
+
+            if (Objects.isNull(request.getAttribute("email"))) {
+                log.error("Not logged in");
+                throw new Exception("Not logged in");
+            }
+
+            String email = request.getAttribute("email").toString();
+
             // 기존 데이터가 없을 때만 샘플 데이터 추가
             if (boardService.getAllBoards().isEmpty()) {
                 Board board1 = new Board();
@@ -160,16 +174,17 @@ public class BoardController {
                     "서울 여행 필수 코스! 경복궁, 남산타워, 홍대, 명동 등을 추천합니다. 특히 봄철 벚꽃이 피는 시기가 최고예요.");
                 board3.setNickName("서울가이드");
 
-                boardService.createBoard(board1);
-                boardService.createBoard(board2);
-                boardService.createBoard(board3);
+                boardService.createBoard(board1, email);
+                boardService.createBoard(board2, email);
+                boardService.createBoard(board3, email);
 
                 return ResponseEntity.ok("샘플 데이터가 추가되었습니다.");
             } else {
                 return ResponseEntity.ok("이미 데이터가 존재합니다.");
             }
         } catch (Exception e) {
-            return ResponseEntity.badRequest().body("샘플 데이터 추가 중 오류가 발생했습니다: " + e.getMessage());
+            log.error(e.getMessage());
+            return ResponseEntity.badRequest().body("샘플 데이터 추가 중 오류가 발생했습니다.");
         }
     }
 }

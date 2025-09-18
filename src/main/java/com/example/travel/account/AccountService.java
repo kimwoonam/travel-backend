@@ -1,6 +1,7 @@
 package com.example.travel.account;
 
 import com.example.travel.account.dto.AccountDto.LoginResponse;
+import com.example.travel.account.dto.AccountDto.SignupRequest;
 import com.example.travel.common.provider.JwtProvider;
 import com.example.travel.common.provider.RedisProvider;
 import com.example.travel.account.dto.AccountDto;
@@ -42,7 +43,7 @@ public class AccountService {
      * @throws IllegalArgumentException 이메일이 이미 등록되어 있는 경우 발생
      */
     @Transactional
-    public LoginResponse signup(AccountDto.SignupRequest req) {
+    public LoginResponse signup(SignupRequest req) {
         accountRepository.findByEmail(req.email).ifPresent(u -> {
             throw new IllegalArgumentException("Email already registered");
         });

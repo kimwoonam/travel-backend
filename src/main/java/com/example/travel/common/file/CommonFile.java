@@ -71,7 +71,7 @@ public class CommonFile {
     private String fileExtension;
 
     @NotBlank
-    @Column(name = "delete_yn", nullable = false, columnDefinition = "VARCHAR(2) DEFAULT 'N'")
+    @Column(name = "delete_yn", nullable = false)
     @Comment("삭제여부 (Y: 삭제, N: 미삭제)")
     private String deleteYn;
 
@@ -87,6 +87,7 @@ public class CommonFile {
     @PrePersist
     protected void onCreate() {
         createdAt = LocalDateTime.now();
+        deleteYn = "N";
     }
 
 }

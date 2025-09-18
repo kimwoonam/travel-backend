@@ -69,8 +69,7 @@ public class JwtInterceptor implements HandlerInterceptor {
 
         // 인증이 필요하지 않은 엔드포인트들
         String requestURI = request.getRequestURI();
-        if (requestURI.startsWith("/api/auth/") && !requestURI.equals("/api/auth/logout")
-            || requestURI.equals("/api/boards")) {
+        if (requestURI.startsWith("/api/auth/") && !requestURI.equals("/api/auth/logout")) {
             return true;
         }
 
@@ -97,16 +96,16 @@ public class JwtInterceptor implements HandlerInterceptor {
         }
 
         String email = jwtProvider.getEmail(token);
-        String userName = jwtProvider.getDisplayName(token);
+        String name = jwtProvider.getName(token);
         // 3. Redis에 등록된 블랙리스트 검증
-        if (redisProvider.isBlacklist(email, userName)) {
-            log.error("email : '{}', name : '{}' is blacklisted.", email, userName);
+        if (redisProvider.isBlacklist(email, name)) {
+            log.error("email : '{}', name : '{}' is blacklisted.", email, name);
             response.setStatus(HttpServletResponse.SC_UNAUTHORIZED);
             return false;
         }
 
         request.setAttribute("email", email);
-        request.setAttribute("name", userName);
+        request.setAttribute("name", name);
 
         return true;
     }

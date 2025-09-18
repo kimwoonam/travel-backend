@@ -9,6 +9,7 @@ import com.example.travel.common.util.CryptoUtil;
 import jakarta.transaction.Transactional;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Objects;
 import java.util.UUID;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -90,7 +91,14 @@ public class BoardService {
      *
      * @param board 저장해야 할 필수 세부 정보를 포함하는 Board 엔터티
      */
-    public void createBoard(Board board) {
+    public void createBoard(Board board, String email) throws RuntimeException {
+
+        Account account = redisProvider.getUserInfo(email);
+        if (Objects.isNull(account.getUuid())) {
+            throw new RuntimeException("Not logged in");
+        }
+        board.setAccountUuid(account.getUuid());
+
         this.saveBoard(board);
     }
 
@@ -106,7 +114,9 @@ public class BoardService {
         throws RuntimeException {
 
         Account account = redisProvider.getUserInfo(email);
-
+        if (Objects.isNull(account.getUuid())) {
+            throw new RuntimeException("Not logged in");
+        }
         reqBoard.setAccountUuid(account.getUuid());
 
         Board board = this.saveBoard(reqBoard);
@@ -125,9 +135,14 @@ public class BoardService {
         return new BoardResponse(board, commonFiles);
     }
 
-    public Board updateBoard(String encryptedUuid, Board boardDetails) {
+    public Board updateBoard(String email, String encryptedUuid, Board boardDetails) {
 
-        Board board = boardRepository.findByUuid(cryptoUtil.decrypt(encryptedUuid))
+        Account account = redisProvider.getUserInfo(email);
+        if (Objects.isNull(account.getUuid())) {
+            throw new RuntimeException("Not logged in");
+        }
+
+        Board board = boardRepository.findByUuidAndAccountUuid(cryptoUtil.decrypt(encryptedUuid), account.getUuid())
             .orElseThrow(() -> new RuntimeException("게시글을 찾을 수 없습니다."));
 
         board.setTitle(boardDetails.getTitle());

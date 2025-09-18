@@ -104,7 +104,7 @@ public class JwtProvider {
      * @param token 표시 이름을 추출할 JWT 토큰
      * @return 토큰에서 검색된 표시 이름을 반환
      */
-    public String getDisplayName(String token) {
+    public String getName(String token) {
         return Jwts.parser()
             .verifyWith(getSigningKey())
             .build()
