@@ -149,7 +149,7 @@ public class BoardService {
         return new BoardResponse(board, commonFiles);
     }
 
-    public Board updateBoard(String email, String encryptedUuid, Board boardDetails) {
+    public BoardResponse updateBoard(String email, String encryptedUuid, Board boardDetails, List<MultipartFile> files) {
 
         Account account = redisProvider.getUserInfo(email)
             .orElseThrow(() -> new RuntimeException("UserInfo is null"));
@@ -159,7 +159,20 @@ public class BoardService {
         board.setTitle(boardDetails.getTitle());
         board.setContent(boardDetails.getContent());
 
-        return boardRepository.save(board);
+        boardRepository.save(board);
+        List<CommonFile> commonFiles = null;
+        if (!files.isEmpty()) {
+            commonFiles = new ArrayList<>();
+            for (MultipartFile file : files) {
+                CommonFile commonFile = new CommonFile();
+                commonFile.setTableName("board");
+                commonFile.setTableId(board.getId());
+                commonFileService.writeFile(file, commonFile);
+                commonFiles.add(commonFile);
+            }
+        }
+
+        return new BoardResponse(board, commonFiles);
     }
 
     public void deleteBoard(String email, String encryptedUuid) {

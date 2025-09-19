@@ -14,7 +14,6 @@ import org.springframework.web.bind.annotation.ModelAttribute;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.PutMapping;
-import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
@@ -70,13 +69,14 @@ public class BoardController {
     }
 
     @PutMapping("/{uuid}")
-    public ResponseEntity<Board> updateBoard(HttpServletRequest request, @PathVariable String uuid,
-        @RequestBody Board boardDetails) {
+    public ResponseEntity<BoardResponse> updateBoard(HttpServletRequest request,
+        @PathVariable String uuid,
+        @ModelAttribute Board boardDetails, @RequestParam("file") List<MultipartFile> files) {
 
         try {
-            Board updatedBoard = boardService.updateBoard(boardService.getEmail(request), uuid,
-                boardDetails);
-            return ResponseEntity.ok(updatedBoard);
+            return ResponseEntity.ok(
+                boardService.updateBoard(boardService.getEmail(request), uuid, boardDetails,
+                    files));
         } catch (RuntimeException e) {
             log.error(e.getMessage());
             return ResponseEntity.notFound().build();
