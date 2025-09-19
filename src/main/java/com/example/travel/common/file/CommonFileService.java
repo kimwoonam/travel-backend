@@ -38,7 +38,7 @@ public class CommonFileService {
     private final CommonFileRepository commonFileRepository;
     private final CryptoUtil cryptoUtil;
 
-    @Value( "${file.upload.path:classpath:upload/}")
+    @Value( "${file.upload.path}")
     private String fileUploadPath;
 
     @Autowired
@@ -114,15 +114,15 @@ public class CommonFileService {
                 log.error("파일 확장자를 찾을 수 없습니다.");
                 throw new RuntimeException("파일 확장자를 찾을 수 없습니다.");
             }
-
-            Path filePath = Paths.get(dirPath + commonFile.getChangeFileName());
+            String fileExtension = file.getOriginalFilename().substring(file.getOriginalFilename().lastIndexOf(".") + 1);
+            String changeFileName = RandomGeneratorUtil.generateRandomString(30);
+            Path filePath = Paths.get(dirPath + changeFileName + "." + fileExtension);
             commonFile.setUuid(UUID.randomUUID().toString());
             commonFile.setFilePath(dirPath);
             commonFile.setFileSize(file.getSize());
-            commonFile.setChangeFileName(RandomGeneratorUtil.generateRandomString(30));
+            commonFile.setChangeFileName(changeFileName);
             commonFile.setOriginalFileName(file.getOriginalFilename());
-            commonFile.setFileExtension(file.getOriginalFilename()
-                .substring(file.getOriginalFilename().lastIndexOf(".") + 1));
+            commonFile.setFileExtension(fileExtension);
 
             commonFileRepository.save(commonFile);
             Files.write(filePath, file.getBytes());
