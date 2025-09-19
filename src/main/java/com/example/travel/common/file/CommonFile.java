@@ -9,6 +9,7 @@ import jakarta.persistence.PrePersist;
 import jakarta.persistence.Table;
 import jakarta.persistence.UniqueConstraint;
 import jakarta.validation.constraints.NotBlank;
+import jakarta.validation.constraints.NotNull;
 import java.time.LocalDateTime;
 import lombok.Getter;
 import lombok.Setter;
@@ -40,7 +41,7 @@ public class CommonFile {
     @Comment("등록한 테이블 이름")
     private String tableName;
 
-    @NotBlank
+    @NotNull
     @Column(name = "table_id", nullable = false)
     @Comment("등록한 테이블의 ID")
     private Long tableId;
@@ -60,7 +61,7 @@ public class CommonFile {
     @Comment("파일경로")
     private String filePath;
 
-    @NotBlank
+    @NotNull
     @Column(name = "file_size", nullable = false)
     @Comment("파일크기")
     private long fileSize;
@@ -70,12 +71,10 @@ public class CommonFile {
     @Comment("파일확장자")
     private String fileExtension;
 
-    @NotBlank
     @Column(name = "delete_yn", nullable = false)
     @Comment("삭제여부 (Y: 삭제, N: 미삭제)")
     private String deleteYn;
 
-    @NotBlank
     @Column(name = "deleted_at")
     @Comment("삭제일시")
     private LocalDateTime deletedAt;
@@ -89,5 +88,4 @@ public class CommonFile {
         createdAt = LocalDateTime.now();
         deleteYn = "N";
     }
-
 }

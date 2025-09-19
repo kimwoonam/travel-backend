@@ -21,14 +21,6 @@ public interface BoardRepository extends JpaRepository<Board, Long> {
     List<Board> findAllByOrderByCreatedAtDesc();
 
     /**
-     * 주어진 UUID 목록에 해당하는 모든 Board 엔터티를 검색합니다.
-     *
-     * @param uuids 검색할 Board 엔터티의 UUID 목록
-     * @return UUID 목록에 해당하는 Board 엔터티 리스트를 반환
-     */
-    List<Board> findByUuidIn(List<String> uuids);
-
-    /**
      * 고유한 UUID를 사용하여 저장소에서 Board 엔터티를 검색합니다.
      *
      * @param uuid 검색할 Board 엔터티의 고유 식별자
@@ -45,11 +37,4 @@ public interface BoardRepository extends JpaRepository<Board, Long> {
      * @return 일치하는 Board 엔터티가 발견되면 해당 엔터티를 포함하는 Optional을 반환하고, 일치하는 엔터티가 발견되지 않으면 빈 Optional을 반환
      */
     Optional<Board> findByUuidAndAccountUuid(String uuid, String accountUuid);
-
-    /**
-     * 지정된 UUID 중 하나와 일치하는 모든 Board 엔터티를 저장소에서 삭제합니다.
-     *
-     * @param uuids 삭제할 Board 엔터티를 식별하는 UUID 목록
-     */
-    void deleteByUuidIn(List<String> uuids);
 }

@@ -1,11 +1,8 @@
 package com.example.travel.board;
 
 import com.example.travel.board.dto.BoardDto.BoardResponse;
-import com.example.travel.common.util.CryptoUtil;
 import jakarta.servlet.http.HttpServletRequest;
-import java.util.Arrays;
 import java.util.List;
-import java.util.Objects;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -13,6 +10,7 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.ModelAttribute;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.PutMapping;
@@ -31,13 +29,12 @@ import org.springframework.web.multipart.MultipartFile;
 public class BoardController {
 
     private static final Logger log = LoggerFactory.getLogger(BoardController.class);
+
     private final BoardService boardService;
-    private final CryptoUtil cryptoUtil;
 
     @Autowired
-    public BoardController(BoardService boardService, CryptoUtil cryptoUtil) {
+    public BoardController(BoardService boardService) {
         this.boardService = boardService;
-        this.cryptoUtil = cryptoUtil;
     }
 
     /**
@@ -56,30 +53,17 @@ public class BoardController {
     public ResponseEntity<Board> getBoardByUuid(@PathVariable String uuid) {
 
         try {
-            Board board;
-
-            // UUID가 암호화된 형태인지 확인
-            if (cryptoUtil.isEncrypted(uuid)) {
-                // 암호화된 UUID로 직접 조회
-                String uuidDecrypted = cryptoUtil.decrypt(uuid);
-                board = boardService.getBoardByUuid(uuidDecrypted);
-            } else {
-                // 일반 UUID로 조회 후 암호화하여 반환
-                log.error("암호화 되지않은 UUID로 조회");
-                throw new RuntimeException("게시글을 찾을 수 없습니다.");
-            }
-
-            return ResponseEntity.ok(board);
+            return ResponseEntity.ok(boardService.getBoardByUuid(uuid));
         } catch (RuntimeException e) {
             log.error(e.getMessage());
-            return ResponseEntity.notFound().build();
+            return ResponseEntity.badRequest().build();
         }
     }
 
     @PostMapping
     @Transactional
     public ResponseEntity<BoardResponse> createBoard(HttpServletRequest request,
-        @RequestBody Board board, @RequestParam("files") List<MultipartFile> files) {
+        @ModelAttribute Board board, @RequestParam("file") List<MultipartFile> files) {
 
         return ResponseEntity.ok(
             boardService.createBoard(board, request.getAttribute("email").toString(), files));
@@ -90,14 +74,8 @@ public class BoardController {
         @RequestBody Board boardDetails) {
 
         try {
-            if (Objects.isNull(request.getAttribute("email"))) {
-                log.error("Not logged in");
-                throw new RuntimeException("Not logged in");
-            }
-
-            String email = request.getAttribute("email").toString();
-
-            Board updatedBoard = boardService.updateBoard(email, uuid, boardDetails);
+            Board updatedBoard = boardService.updateBoard(boardService.getEmail(request), uuid,
+                boardDetails);
             return ResponseEntity.ok(updatedBoard);
         } catch (RuntimeException e) {
             log.error(e.getMessage());
@@ -106,9 +84,9 @@ public class BoardController {
     }
 
     @DeleteMapping("/{uuid}")
-    public ResponseEntity<Void> deleteBoard(@PathVariable String uuid) {
+    public ResponseEntity<Void> deleteBoard(HttpServletRequest request, @PathVariable String uuid) {
         try {
-            boardService.deleteBoard(uuid);
+            boardService.deleteBoard(boardService.getEmail(request), uuid);
             return ResponseEntity.ok().build();
         } catch (RuntimeException e) {
             log.error(e.getMessage());
@@ -118,20 +96,15 @@ public class BoardController {
 
     @DeleteMapping("/bulk/{uuid}")
     @Transactional
-    public ResponseEntity<Void> deleteBoardByUuids(@PathVariable String uuid) {
+    public ResponseEntity<Void> deleteBoardByUuids(HttpServletRequest request,
+        @PathVariable String uuid) {
 
         try {
-            if (uuid.isEmpty()) {
-                log.error("파라메터 오류");
-                return ResponseEntity.badRequest().build();
-            }
-
-            List<String> uuids = Arrays.asList(uuid.split(","));
-            boardService.deleteBoardBulk(uuids);
+            boardService.deleteBoardBulk(boardService.getEmail(request), uuid);
             return ResponseEntity.noContent().build();
         } catch (RuntimeException e) {
             log.error(e.getMessage());
-            return ResponseEntity.notFound().build();
+            return ResponseEntity.badRequest().build();
         }
     }
 
@@ -148,12 +121,7 @@ public class BoardController {
 
         try {
 
-            if (Objects.isNull(request.getAttribute("email"))) {
-                log.error("Not logged in");
-                throw new Exception("Not logged in");
-            }
-
-            String email = request.getAttribute("email").toString();
+            String email = boardService.getEmail(request);
 
             // 기존 데이터가 없을 때만 샘플 데이터 추가
             if (boardService.getAllBoards().isEmpty()) {

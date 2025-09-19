@@ -4,6 +4,7 @@ import com.example.travel.account.Account;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import java.util.HashMap;
 import java.util.Map;
+import java.util.Optional;
 import java.util.concurrent.TimeUnit;
 import org.springframework.data.redis.core.RedisTemplate;
 import org.springframework.stereotype.Component;
@@ -77,11 +78,12 @@ public class RedisProvider {
      * @param email 정보를 검색할 사용자의 이메일 주소
      * @return 캐시에서 검색된 사용자 정보가 포함된 Account 객체를 반환
      */
-    public Account getUserInfo(String email) {
+    public Optional<Account> getUserInfo(String email) {
 
         // redisTemplate.opsForHash().get("USERINFO:" + email, "EMAIL")
         Map<Object, Object> userInfo = redisTemplate.opsForHash().entries("USERINFO:" + email);
-        return new ObjectMapper().convertValue(userInfo, Account.class);
+        Account account = new ObjectMapper().convertValue(userInfo, Account.class);
+        return Optional.ofNullable(account);
     }
 
     /**

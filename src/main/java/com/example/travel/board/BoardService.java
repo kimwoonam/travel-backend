@@ -6,8 +6,10 @@ import com.example.travel.common.file.CommonFile;
 import com.example.travel.common.file.CommonFileService;
 import com.example.travel.common.provider.RedisProvider;
 import com.example.travel.common.util.CryptoUtil;
+import jakarta.servlet.http.HttpServletRequest;
 import jakarta.transaction.Transactional;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.List;
 import java.util.Objects;
 import java.util.UUID;
@@ -54,6 +56,16 @@ public class BoardService {
         return boardRepository.save(board);
     }
 
+
+    public String getEmail(HttpServletRequest request) throws RuntimeException {
+
+        if (Objects.isNull(request.getAttribute("email"))) {
+            throw new RuntimeException("email is null");
+        }
+
+        return request.getAttribute("email").toString();
+    }
+
     /**
      * 모든 게시판 엔터티를 생성일을 기준으로 내림차순으로 정렬하여 검색합니다. 게시판 목록을 반환하기 전에 UUID가 암호화됩니다.
      *
@@ -75,11 +87,17 @@ public class BoardService {
      * @return Board UUID가 암호화된 Board 엔터티를 반환
      * @throws RuntimeException 주어진 UUID로 보드를 찾을 수 없는 경우 발생
      */
-    public Board getBoardByUuid(String encryptedUuid) {
+    public Board getBoardByUuid(String encryptedUuid) throws RuntimeException {
+
+        // UUID가 암호화된 형태인지 확인
+        if (!cryptoUtil.isEncrypted(encryptedUuid)) {
+            // 일반 UUID로 조회 후 암호화하여 반환
+            log.error("암호화 되지않은 UUID로 조회");
+            throw new RuntimeException("게시글을 찾을 수 없습니다.");
+        }
 
         Board board = boardRepository.findByUuid(cryptoUtil.decrypt(encryptedUuid))
             .orElseThrow(() -> new RuntimeException("게시글을 찾을 수 없습니다."));
-
         // 조회 시 UUID를 암호화하여 반환
         board.setUuid(cryptoUtil.encrypt(board.getUuid()));
 
@@ -93,10 +111,8 @@ public class BoardService {
      */
     public void createBoard(Board board, String email) throws RuntimeException {
 
-        Account account = redisProvider.getUserInfo(email);
-        if (Objects.isNull(account.getUuid())) {
-            throw new RuntimeException("Not logged in");
-        }
+        Account account = redisProvider.getUserInfo(email)
+            .orElseThrow(() -> new RuntimeException("Not logged in"));
         board.setAccountUuid(account.getUuid());
 
         this.saveBoard(board);
@@ -113,10 +129,8 @@ public class BoardService {
     public BoardResponse createBoard(Board reqBoard, String email, List<MultipartFile> files)
         throws RuntimeException {
 
-        Account account = redisProvider.getUserInfo(email);
-        if (Objects.isNull(account.getUuid())) {
-            throw new RuntimeException("Not logged in");
-        }
+        Account account = redisProvider.getUserInfo(email)
+            .orElseThrow(() -> new RuntimeException("UserInfo is null"));
         reqBoard.setAccountUuid(account.getUuid());
 
         Board board = this.saveBoard(reqBoard);
@@ -137,13 +151,10 @@ public class BoardService {
 
     public Board updateBoard(String email, String encryptedUuid, Board boardDetails) {
 
-        Account account = redisProvider.getUserInfo(email);
-        if (Objects.isNull(account.getUuid())) {
-            throw new RuntimeException("Not logged in");
-        }
-
-        Board board = boardRepository.findByUuidAndAccountUuid(cryptoUtil.decrypt(encryptedUuid), account.getUuid())
-            .orElseThrow(() -> new RuntimeException("게시글을 찾을 수 없습니다."));
+        Account account = redisProvider.getUserInfo(email)
+            .orElseThrow(() -> new RuntimeException("UserInfo is null"));
+        Board board = boardRepository.findByUuidAndAccountUuid(cryptoUtil.decrypt(encryptedUuid),
+            account.getUuid()).orElseThrow(() -> new RuntimeException("게시글을 찾을 수 없습니다."));
 
         board.setTitle(boardDetails.getTitle());
         board.setContent(boardDetails.getContent());
@@ -151,29 +162,34 @@ public class BoardService {
         return boardRepository.save(board);
     }
 
-    public void deleteBoard(String encryptedUuid) {
+    public void deleteBoard(String email, String encryptedUuid) {
 
-        Board board = boardRepository.findByUuid(cryptoUtil.decrypt(encryptedUuid))
-            .orElseThrow(() -> new RuntimeException("게시글을 찾을 수 없습니다."));
+        Account account = redisProvider.getUserInfo(email)
+            .orElseThrow(() -> new RuntimeException("UserInfo is null"));
+        Board board = boardRepository.findByUuidAndAccountUuid(cryptoUtil.decrypt(encryptedUuid),
+            account.getUuid()).orElseThrow(() -> new RuntimeException("게시글을 찾을 수 없습니다."));
 
         boardRepository.delete(board);
     }
 
     @Transactional
-    public void deleteBoardBulk(List<String> encryptedUuids) {
+    public void deleteBoardBulk(String email, String uuid) throws RuntimeException {
 
-        List<String> uuids = new ArrayList<>();
-        encryptedUuids.forEach(encryptedUuid -> {
-            uuids.add(cryptoUtil.decrypt(encryptedUuid));
-            log.debug("deleteBoardBulk - 복호화된 UUID: {}", cryptoUtil.decrypt(encryptedUuid));
+        if (uuid.isEmpty()) {
+            throw new RuntimeException("uuid is empty");
+        }
+
+        List<String> uuids = Arrays.asList(uuid.split(","));
+
+        Account account = redisProvider.getUserInfo(email)
+            .orElseThrow(() -> new RuntimeException("UserInfo is null"));
+        uuids.forEach(encryptedUuid -> {
+            Board board = boardRepository.findByUuidAndAccountUuid(
+                cryptoUtil.decrypt(encryptedUuid), account.getUuid()).orElse(null);
+            if (!Objects.isNull(board)) {
+                commonFileService.softDeleteCommonFileBulk("board", board.getId());
+                boardRepository.delete(board);
+            }
         });
-
-        log.debug("uuids.size: {}", uuids.size());
-
-        boardRepository.findByUuidIn(uuids).forEach(board ->
-            commonFileService.softDeleteCommonFileBulk("board", board.getId())
-        );
-
-        boardRepository.deleteByUuidIn(uuids);
     }
 }
