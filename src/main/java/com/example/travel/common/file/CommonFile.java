@@ -21,8 +21,8 @@ import org.hibernate.annotations.Comment;
 @Table(
     name = "common_file",
     uniqueConstraints = @UniqueConstraint(
-        columnNames = {"table_name", "table_id"},
-        name = "unique_table_name_table_id"
+        columnNames = {"uuid", "table_name", "table_id"},
+        name = "unique_uuid_table_name_table_id"
     )
 )
 public class CommonFile {
