@@ -48,7 +48,7 @@ public class JwtProvider {
      * 제공된 이메일 주소와 표시 이름을 기반으로 JWT 토큰을 생성합니다. 토큰에는 사용자 정보와 만료 시간이 포함됩니다.
      *
      * @param email 토큰이 생성된 사용자의 이메일
-     * @param name  토큰 클레임에 포함할 사용자의 표시 이름
+     * @param name 토큰 클레임에 포함할 사용자의 표시 이름
      * @return 생성된 JWT 토큰을 문자열로 반환
      */
     public String generateToken(String email, String name) {

@@ -32,7 +32,7 @@ public interface BoardRepository extends JpaRepository<Board, Long> {
     /**
      * 제공된 UUID 및 계정 UUID와 일치하는 Board 엔터티를 포함하는 Optional을 검색합니다(해당 엔터티가 저장소에 있는 경우).
      *
-     * @param uuid        찾으려는 Board 엔터티의 고유 식별자
+     * @param uuid 찾으려는 Board 엔터티의 고유 식별자
      * @param accountUuid 연관된 계정의 고유 식별자
      * @return 일치하는 Board 엔터티가 발견되면 해당 엔터티를 포함하는 Optional을 반환하고, 일치하는 엔터티가 발견되지 않으면 빈 Optional을 반환
      */
