@@ -3,6 +3,7 @@ package com.example.travel.board;
 import com.example.travel.account.Account;
 import com.example.travel.board.dto.BoardDto.BoardResponse;
 import com.example.travel.common.file.CommonFile;
+import com.example.travel.common.file.CommonFileRepository;
 import com.example.travel.common.file.CommonFileService;
 import com.example.travel.common.provider.RedisProvider;
 import com.example.travel.common.util.CryptoUtil;
@@ -31,14 +32,17 @@ public class BoardService {
     private final CryptoUtil cryptoUtil;
     private final CommonFileService commonFileService;
     private final RedisProvider redisProvider;
+    private final CommonFileRepository commonFileRepository;
 
     @Autowired
     public BoardService(BoardRepository boardRepository, CryptoUtil cryptoUtil,
-        CommonFileService commonFileService, RedisProvider redisProvider) {
+        CommonFileService commonFileService, RedisProvider redisProvider,
+        CommonFileRepository commonFileRepository) {
         this.boardRepository = boardRepository;
         this.cryptoUtil = cryptoUtil;
         this.commonFileService = commonFileService;
         this.redisProvider = redisProvider;
+        this.commonFileRepository = commonFileRepository;
     }
 
     /**
@@ -90,8 +94,8 @@ public class BoardService {
      */
     public String getEmail(HttpServletRequest request) throws RuntimeException {
 
-        if (!Objects.isNull(request.getAttribute("email"))) {
-            log.error("email is not null");
+        if (Objects.isNull(request.getAttribute("email"))) {
+            log.error("email not null");
             throw new RuntimeException("email is null");
         }
 
@@ -117,7 +121,7 @@ public class BoardService {
      * @return Board UUID가 암호화된 Board 엔터티를 반환
      * @throws RuntimeException 주어진 UUID로 보드를 찾을 수 없는 경우 발생
      */
-    public Board getBoardByUuid(String encryptedUuid) throws RuntimeException {
+    public BoardResponse getBoardByUuid(String encryptedUuid) throws RuntimeException {
 
         // UUID가 암호화된 형태인지 확인
         if (!cryptoUtil.isEncrypted(encryptedUuid)) {
@@ -131,7 +135,9 @@ public class BoardService {
         // 조회 시 UUID를 암호화하여 반환
         board.setUuid(cryptoUtil.encrypt(board.getUuid()));
 
-        return board;
+        List<CommonFile> commonFiles = commonFileRepository.findByTableNameAndTableId("board", board.getId());
+
+        return new BoardResponse(board, commonFiles);
     }
 
     /**
