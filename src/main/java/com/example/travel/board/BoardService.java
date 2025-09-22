@@ -222,6 +222,7 @@ public class BoardService {
         Board board = boardRepository.findByUuidAndAccountUuid(cryptoUtil.decrypt(encryptedUuid),
             account.getUuid()).orElseThrow(() -> new RuntimeException("게시글을 찾을 수 없습니다."));
         commonFileService.softDeleteCommonFileBulk("board", board.getId());
+        boardRepository.delete(board);
     }
 
     /**
