@@ -27,16 +27,13 @@ import org.springframework.stereotype.Component;
 import org.springframework.web.multipart.MultipartFile;
 
 /**
- * CommonFileService 클래스는 파일 관리 작업(저장, 검색, 삭제)을 처리하기 위한 서비스입니다.
- * 파일 시스템 상의 파일 저장 작업, 데이터베이스의 파일 메타데이터 관리 및 암호화 처리를 수행합니다.
+ * 이 클래스는 파일 저장, 검색, 소프트 삭제, 다운로드 등 파일 관련 작업을 관리하는 서비스 세트를 제공합니다.
+ * 파일 저장소, 토큰 기반 인증 및 암호화 유틸리티와 상호 작용하여 안전한 파일 처리를 보장합니다.
  * <br/>
- * 주요 기능:
- * - 파일 엔터티의 UUID 암호화 및 복호화
- * - 파일 저장 디렉터리 생성 및 관리
- * - 파일 읽기, 쓰기, 삭제
- * - 데이터베이스와의 상호작용을 통한 파일 메타데이터 관리
+ * 읽기, 쓰기, UUID 암호화, 사용자 토큰 확인, 파일 메타데이터를 포함한 적절한 응답 반환 등의 파일 작업을 관리합니다.
  * <br/>
- * 이 클래스는 {@link CommonFileRepository}와 {@link CryptoUtil}을 활용하며, 파일 저장 경로는 고정값을 사용합니다.
+ * CommonFileRepository, JwtProvider, RedisProvider,
+ * CryptoUtil을 포함한 외부 유틸리티 클래스 및 저장소에 대한 종속성은 생성자를 통해 주입됩니다.
  */
 @Component
 public class CommonFileService {
@@ -101,13 +98,14 @@ public class CommonFileService {
     }
 
     /**
-     * 지정된 암호화된 UUID를 사용하여 파일을 다운로드합니다.
-     * 이 메서드는 데이터베이스에서 파일 메타데이터를 찾고, 파일 시스템에서 파일을 읽어
-     * 다운로드에 적합한 HTTP 헤더와 함께 ResponseEntity<Resource>로 반환합니다.
+     * 토큰의 유효성을 확인한 후 제공된 암호화된 UUID를 기반으로 파일을 다운로드합니다. 이 메서드는 UUID를 복호화하고,
+     * 데이터베이스에서 파일 정보를 검색하여 적절한 HTTP 헤더와 함께 다운로드 가능한 리소스로 제공합니다.
      *
+     * @param token 인증 및 권한 부여에 사용되는 JWT 토큰
      * @param encryptedUuid 다운로드할 파일의 암호화된 고유 식별자
-     * @return 파일 리소스와 다운로드 헤더를 포함하는 ResponseEntity 객체
-     * @throws IOException 파일을 찾을 수 없거나 읽는 중 오류가 발생할 경우
+     * @return @code ResponseEntity<Resource>}는 HTTP 헤더와 함께 파일을 리소스로 포함
+     * @throws RuntimeException 토큰이 유효하지 않거나 토큰이 로그아웃으로 표시된 경우 발생
+     * @throws IOException 파일 정보를 검색할 수 없거나, 파일이 존재하지 않거나, 파일을 읽는 중 오류가 발생한 경우
      */
     public ResponseEntity<Resource> downloadFile(String token, String encryptedUuid)
         throws RuntimeException, IOException {
