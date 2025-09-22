@@ -1,5 +1,7 @@
 package com.example.travel.common.file;
 
+import com.example.travel.common.provider.JwtProvider;
+import com.example.travel.common.provider.RedisProvider;
 import com.example.travel.common.util.CryptoUtil;
 import com.example.travel.common.util.RandomGeneratorUtil;
 import java.io.IOException;
@@ -42,14 +44,19 @@ public class CommonFileService {
     private static final Logger log = LogManager.getLogger(CommonFileService.class);
 
     private final CommonFileRepository commonFileRepository;
+    private final JwtProvider jwtProvider;
+    private final RedisProvider redisProvider;
     private final CryptoUtil cryptoUtil;
 
     @Value("${file.upload.path}")
     private String FILE_UPLOAD_PATH;
 
     @Autowired
-    public CommonFileService(CommonFileRepository commonFileRepository, CryptoUtil cryptoUtil) {
+    public CommonFileService(CommonFileRepository commonFileRepository, JwtProvider jwtProvider,
+        RedisProvider redisProvider, CryptoUtil cryptoUtil) {
         this.commonFileRepository = commonFileRepository;
+        this.jwtProvider = jwtProvider;
+        this.redisProvider = redisProvider;
         this.cryptoUtil = cryptoUtil;
     }
 
@@ -102,7 +109,20 @@ public class CommonFileService {
      * @return 파일 리소스와 다운로드 헤더를 포함하는 ResponseEntity 객체
      * @throws IOException 파일을 찾을 수 없거나 읽는 중 오류가 발생할 경우
      */
-    public ResponseEntity<Resource> downloadFile(String encryptedUuid) throws IOException {
+    public ResponseEntity<Resource> downloadFile(String token, String encryptedUuid)
+        throws RuntimeException, IOException {
+
+        // 토큰 검증
+        if (!jwtProvider.validateToken(token)) {
+            log.error("Invalid token.");
+            throw new RuntimeException("Invalid token.");
+        }
+        // 2. Redis JWT 확인
+        if (!redisProvider.isJwt(token)) {
+            log.error("Token is logged out.");
+            throw new RuntimeException("Token is logged out.");
+        }
+
         // 1. UUID 복호화 및 파일 정보 조회
         CommonFile commonFile = commonFileRepository.findByUuid(cryptoUtil.decrypt(encryptedUuid))
             .orElseThrow(() -> new IOException("파일 정보를 찾을 수 없습니다"));
@@ -118,11 +138,13 @@ public class CommonFileService {
 
         // 4. 원본 파일 이름 인코딩 (브라우저 호환성)
         String originalFileName = commonFile.getOriginalFileName();
-        String encodedFileName = URLEncoder.encode(originalFileName, StandardCharsets.UTF_8).replaceAll("\\+", "%20");
+        String encodedFileName = URLEncoder.encode(originalFileName, StandardCharsets.UTF_8)
+            .replaceAll("\\+", "%20");
 
         // 5. HTTP 헤더 설정
         HttpHeaders headers = new HttpHeaders();
-        headers.add(HttpHeaders.CONTENT_DISPOSITION, "attachment; filename=\"" + encodedFileName + "\"");
+        headers.add(HttpHeaders.CONTENT_DISPOSITION,
+            "attachment; filename=\"" + encodedFileName + "\"");
         headers.add(HttpHeaders.CONTENT_TYPE, Files.probeContentType(filePath));
         headers.add(HttpHeaders.CONTENT_LENGTH, String.valueOf(commonFile.getFileSize()));
 
@@ -163,7 +185,7 @@ public class CommonFileService {
         String sDirPath = formattedDate + "/";
         String sFilePath = sDirPath + changeFileName + "." + fileExtension;
         // 디렉토리 경로
-        Path path = Path.of(FILE_UPLOAD_PATH +  sDirPath);
+        Path path = Path.of(FILE_UPLOAD_PATH + sDirPath);
         // 디렉토리 + 파일 경로
         Path filePath = Paths.get(FILE_UPLOAD_PATH + sFilePath);
 

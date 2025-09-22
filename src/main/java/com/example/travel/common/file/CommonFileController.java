@@ -26,14 +26,24 @@ public class CommonFileController {
     /**
      * UUID를 기반으로 보드 엔터티를 검색합니다.
      *
-     * @param uuid 검색할 게시판의 고유 식별자
+     * @param param 검색할 게시판의 고유 식별자
      * @return 성공 시 검색된 보드을 포함하는 ResponseEntity를 반환하고, 오류가 발생하면 잘못된 요청 응답을 반환합니다.
      */
-    @GetMapping("/{uuid}")
-    public ResponseEntity<Resource> download(@PathVariable String uuid) {
+    @GetMapping("/{param}")
+    public ResponseEntity<Resource> download(@PathVariable String param) {
 
         try {
-            return commonFileService.downloadFile(uuid);
+
+            String[] params = param.split(",");
+            if (params.length != 2) {
+                log.error("param is invalid");
+                return ResponseEntity.badRequest().build();
+            }
+
+            String token = params[0];
+            String uuid = params[1];
+
+            return commonFileService.downloadFile(token, uuid);
         } catch (RuntimeException | IOException e) {
             log.error(e.getMessage());
             return ResponseEntity.badRequest().build();

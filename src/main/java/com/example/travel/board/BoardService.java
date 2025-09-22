@@ -136,6 +136,7 @@ public class BoardService {
         board.setUuid(cryptoUtil.encrypt(board.getUuid()));
 
         List<CommonFile> commonFiles = commonFileRepository.findByTableNameAndTableId("board", board.getId());
+        commonFiles.forEach(commonFile -> commonFile.setUuid(cryptoUtil.encrypt(commonFile.getUuid())));
 
         return new BoardResponse(board, commonFiles);
     }
