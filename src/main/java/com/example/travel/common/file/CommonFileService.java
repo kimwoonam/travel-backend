@@ -38,8 +38,8 @@ public class CommonFileService {
     private final CommonFileRepository commonFileRepository;
     private final CryptoUtil cryptoUtil;
 
-    @Value( "${file.upload.path}")
-    private String fileUploadPath;
+    @Value("${file.upload.path}")
+    private String FILE_UPLOAD_PATH;
 
     @Autowired
     public CommonFileService(CommonFileRepository commonFileRepository, CryptoUtil cryptoUtil) {
@@ -63,6 +63,19 @@ public class CommonFileService {
     }
 
     /**
+     * 지정된 파일의 삭제 상태와 삭제 타임스탬프를 업데이트하여 데이터베이스에서 해당 파일을 "소프트 삭제됨"으로 표시합니다.
+     * 파일은 UUID, 연결된 테이블 이름 및 테이블 ID를 사용하여 식별됩니다.
+     *
+     * @param uuid 소프트 삭제할 파일의 고유 식별자
+     * @param tableName 파일과 연관된 테이블의 이름
+     * @param tableId 파일과 연관된 테이블 ID
+     */
+    public void softDeleteCommonFile(String uuid, String tableName, Long tableId) {
+        commonFileRepository.updateDeleteStatusByUuidAndTableNameAndTableId(uuid, tableName,
+            tableId);
+    }
+
+    /**
      * 특정 테이블 이름 및 테이블 ID와 연결된 파일을 데이터베이스에서 "소프트 삭제됨"으로 표시합니다.
      * 이 메서드는 `deleteYn` 필드를 'Y'로 수정하고
      * `CommonFile` 테이블의 해당 레코드에 대한 `deletedAt` 타임스탬프를 업데이트합니다.
@@ -75,10 +88,11 @@ public class CommonFileService {
     }
 
     /**
-     * 지정된 디렉터리에 파일을 저장하고 파일 메타데이터로 {@code CommonFile} 엔터티를 업데이트합니다. 이 메서드는 디렉터리 존재 여부를 확인하고 저장하기 전에
-     * 고유한 파일 이름을 지정합니다. 처리 중 오류가 발생하면 파일이 삭제되고 {@code RuntimeException}이 발생합니다.
+     * 지정된 디렉터리에 파일을 저장하고 파일 메타데이터로 {@code CommonFile} 엔터티를 업데이트합니다.
+     * 이 메서드는 디렉터리 존재 여부를 확인하고 저장하기 전에 고유한 파일 이름을 지정합니다.
+     * 처리 중 오류가 발생하면 파일이 삭제되고 {@code RuntimeException}이 발생합니다.
      *
-     * @param file       저장할 다중 파트 파일입니다. 비어 있을 수 없습니다.
+     * @param file 저장할 다중 파트 파일입니다. 비어 있을 수 없습니다.
      * @param commonFile 파일 메타데이터로 업데이트할 {@code CommonFile} 엔터티
      * @throws RuntimeException 파일이 비어 있거나, 경로 생성 중 오류가 발생하거나, 파일 확장자를 확인할 수 없는 경우
      */
@@ -89,52 +103,53 @@ public class CommonFileService {
             throw new RuntimeException("업로드할 파일을 선택해 주세요.");
         }
 
-        String dirPath = "";
+        String originalFileName = file.getOriginalFilename();
+        if (Objects.requireNonNull(originalFileName).lastIndexOf(".") < 0) {
+            log.error("파일 확장자를 찾을 수 없습니다.");
+            throw new RuntimeException("파일 확장자를 찾을 수 없습니다.");
+        }
+
+        LocalDate today = LocalDate.now();
+        DateTimeFormatter formatter = DateTimeFormatter.ofPattern("yyyyMMdd");
+
+        String formattedDate = today.format(formatter);
+        String fileExtension = originalFileName.substring(originalFileName.lastIndexOf(".") + 1);
+        String changeFileName = RandomGeneratorUtil.generateRandomString(30);
+        String sDirPath = formattedDate + "/";
+        String sFilePath = sDirPath + changeFileName + "." + fileExtension;
+        // 디렉토리 경로
+        Path path = Path.of(FILE_UPLOAD_PATH +  sDirPath);
+        // 디렉토리 + 파일 경로
+        Path filePath = Paths.get(FILE_UPLOAD_PATH + sFilePath);
 
         try {
 
-            LocalDate today = LocalDate.now();
-
-            // Define the desired format
-            DateTimeFormatter formatter = DateTimeFormatter.ofPattern("yyyyMMdd");
-
-            // Format the date
-            String formattedDate = today.format(formatter);
-
-            dirPath = fileUploadPath + formattedDate + "/";
-            Path path = Path.of(dirPath);
             // 디렉토리 체크
             if (!Files.isDirectory(path)) {
                 // 디렉토리 없으면 생성
                 Files.createDirectories(path);
             }
 
-
-            if (Objects.requireNonNull(file.getOriginalFilename()).lastIndexOf(".") < 0) {
-                log.error("파일 확장자를 찾을 수 없습니다.");
-                throw new RuntimeException("파일 확장자를 찾을 수 없습니다.");
-            }
-            String fileExtension = file.getOriginalFilename().substring(file.getOriginalFilename().lastIndexOf(".") + 1);
-            String changeFileName = RandomGeneratorUtil.generateRandomString(30);
-            Path filePath = Paths.get(dirPath + changeFileName + "." + fileExtension);
+            // 저장할 파일정보 설정
             commonFile.setUuid(UUID.randomUUID().toString());
-            commonFile.setFilePath(dirPath);
+            commonFile.setFilePath(sFilePath);
             commonFile.setFileSize(file.getSize());
             commonFile.setChangeFileName(changeFileName);
-            commonFile.setOriginalFileName(file.getOriginalFilename());
+            commonFile.setOriginalFileName(originalFileName);
             commonFile.setFileExtension(fileExtension);
 
             commonFileRepository.save(commonFile);
+
             Files.write(filePath, file.getBytes());
 
         } catch (IOException e) {
             throw new RuntimeException(e);
         } catch (RuntimeException e) {
-            log.error("RuntimeException : {}", e.getMessage());
+            log.error(e.getMessage());
             try {
-                Files.delete(Path.of(dirPath + commonFile.getChangeFileName()));
+                Files.delete(filePath);
             } catch (IOException ioe) {
-                log.error("IOException : {}", ioe.getMessage());
+                log.error(ioe.getMessage());
             }
             throw new RuntimeException(e);
         }
@@ -164,14 +179,13 @@ public class CommonFileService {
 
             Files.delete(Path.of(commonFile.getFilePath()));
         } catch (IOException e) {
-            log.error("IOException : {}", e.getMessage());
+            log.error(e.getMessage());
         }
     }
 
     /**
      * 특정 테이블 이름 및 테이블 ID와 관련된 파일을 파일 시스템에서 해당 항목을 제거하여 삭제합니다.
-     * 디렉토리가 없으면 예외가 발생합니다.
-     * 프로세스 중 {@link IOException}이 발생하면 오류를 기록합니다.
+     * 디렉토리가 없으면 예외가 발생합니다. 프로세스 중 {@link IOException}이 발생하면 오류를 기록합니다.
      *
      * @param tableName 삭제할 파일과 연관된 테이블의 이름
      * @param tableId 삭제할 파일과 연관된 테이블의 ID
@@ -196,7 +210,7 @@ public class CommonFileService {
             }
 
         } catch (IOException e) {
-            log.error("IOException : {}", e.getMessage());
+            log.error(e.getMessage());
         }
     }
 }

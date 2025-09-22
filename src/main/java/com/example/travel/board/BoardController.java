@@ -48,6 +48,12 @@ public class BoardController {
         return ResponseEntity.ok(boards);
     }
 
+    /**
+     * UUID를 기반으로 보드 엔터티를 검색합니다.
+     *
+     * @param uuid 검색할 게시판의 고유 식별자
+     * @return 성공 시 검색된 보드을 포함하는 ResponseEntity를 반환하고, 오류가 발생하면 잘못된 요청 응답을 반환합니다.
+     */
     @GetMapping("/{uuid}")
     public ResponseEntity<Board> getBoardByUuid(@PathVariable String uuid) {
 
@@ -59,48 +65,91 @@ public class BoardController {
         }
     }
 
+    /**
+     * 새 게시판을 생성하여 데이터베이스에 저장합니다.
+     * 이 메서드는 요청에서 사용자의 이메일을 검색하고, 관련 파일을 포함한 보드 정보를 처리하여 BoardService를 통해 저장합니다.
+     *
+     * @param request 인증된 사용자에 대한 정보가 포함된 HttpServletRequest
+     * @param board 생성할 게시판의 세부 정보를 포함하는 보드 엔터티
+     * @param files 게시판과 연관될 파일 목록
+     * @return 성공하면 생성된 게시판의 세부 정보를 포함하는 ResponseEntity 또는 예외가 발생하면 오류 응답
+     */
     @PostMapping
     @Transactional
     public ResponseEntity<BoardResponse> createBoard(HttpServletRequest request,
         @ModelAttribute Board board, @RequestParam("file") List<MultipartFile> files) {
 
-        return ResponseEntity.ok(
-            boardService.createBoard(board, request.getAttribute("email").toString(), files));
-    }
-
-    @PutMapping("/{uuid}")
-    public ResponseEntity<BoardResponse> updateBoard(HttpServletRequest request,
-        @PathVariable String uuid,
-        @ModelAttribute Board boardDetails, @RequestParam("file") List<MultipartFile> files) {
-
         try {
-            return ResponseEntity.ok(
-                boardService.updateBoard(boardService.getEmail(request), uuid, boardDetails,
-                    files));
+            String email = boardService.getEmail(request);
+            return ResponseEntity.ok(boardService.createBoard(board, email, files));
         } catch (RuntimeException e) {
             log.error(e.getMessage());
-            return ResponseEntity.notFound().build();
+            return ResponseEntity.badRequest().build();
         }
     }
 
+    /**
+     * 제공된 세부 정보로 기존 보드 항목을 업데이트합니다. 이 메서드는 업데이트된 보드 세부 정보를 처리하고,
+     * 지정된 파일을 삭제하고, 업데이트 과정에서 새 파일을 보드에 연결합니다.
+     *
+     * @param request 인증 또는 컨텍스트 관련 정보가 포함된 HttpServletRequest
+     * @param uuid 업데이트 할 게시판의 고유 식별자
+     * @param boardDetail 모델 속성으로 제공된 업데이트된 게시판 세부 정보
+     * @param deleteFileId 해당되는 경우 삭제할 파일의 식별자
+     * @param files 게시판과 연관될 파일 목록
+     * @return 성공 시 업데이트된 보드 세부 정보를 포함하는 ResponseEntity 또는 실패 시 잘못된 요청 응답
+     */
+    @PutMapping("/{uuid}")
+    public ResponseEntity<BoardResponse> updateBoard(HttpServletRequest request,
+        @PathVariable String uuid, @ModelAttribute Board boardDetail,
+        @RequestParam("deleteFileId") String deleteFileId, @RequestParam("file") List<MultipartFile> files) {
+
+        try {
+            String email = boardService.getEmail(request);
+            return ResponseEntity.ok(boardService.updateBoard(email, uuid, boardDetail, deleteFileId, files));
+        } catch (RuntimeException e) {
+            log.error(e.getMessage());
+            return ResponseEntity.badRequest().build();
+        }
+    }
+
+    /**
+     * UUID로 식별된 게시판을 삭제합니다. 요청하는 사용자가 요청에 포함된 이메일의 유효성을 검사하여 권한이 있는지 확인합니다.
+     *
+     * @param request 사용자 인증 세부 정보가 포함된 HttpServletRequest
+     * @param uuid 삭제할 게시판의 고유 식별자
+     * @return 작업이 성공하면 HTTP 상태 200을 갖는 ResponseEntity, 실패하면 HTTP 상태 400을 갖는 ResponseEntity
+     */
     @DeleteMapping("/{uuid}")
+    @Transactional
     public ResponseEntity<Void> deleteBoard(HttpServletRequest request, @PathVariable String uuid) {
         try {
-            boardService.deleteBoard(boardService.getEmail(request), uuid);
+            String email = boardService.getEmail(request);
+            boardService.deleteBoard(email, uuid);
             return ResponseEntity.ok().build();
         } catch (RuntimeException e) {
             log.error(e.getMessage());
-            return ResponseEntity.notFound().build();
+            return ResponseEntity.badRequest().build();
         }
     }
 
-    @DeleteMapping("/bulk/{uuid}")
+    /**
+     * UUID로 식별된 여러 게시판을 삭제합니다.
+     * 이 작업은 대량으로 수행되며 트랜잭션 방식으로 진행되므로 오류 발생 시 모든 게시판이 삭제되거나 아무것도 삭제되지 않습니다.
+     *
+     * @param request 인증 또는 세션 세부 정보가 포함된 HTTP 요청
+     * @param uuids 삭제할 보드을 나타내는 쉼표로 구분된 UUID 문자열
+     * @return 성공 시 HTTP 204 No Content가 포함된 ResponseEntity,
+     *         실패 시 HTTP 400 Bad Request가 포함된 ResponseEntity
+     */
+    @DeleteMapping("/bulk/{uuids}")
     @Transactional
     public ResponseEntity<Void> deleteBoardByUuids(HttpServletRequest request,
-        @PathVariable String uuid) {
+        @PathVariable String uuids) {
 
         try {
-            boardService.deleteBoardBulk(boardService.getEmail(request), uuid);
+            String email = boardService.getEmail(request);
+            boardService.deleteBoardBulk(email, uuids);
             return ResponseEntity.noContent().build();
         } catch (RuntimeException e) {
             log.error(e.getMessage());

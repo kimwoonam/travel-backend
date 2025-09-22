@@ -15,35 +15,51 @@ import org.springframework.data.jpa.repository.Query;
 public interface CommonFileRepository extends JpaRepository<CommonFile, Long> {
 
     /**
-     * 고유한 UUID를 기반으로 {@link CommonFile} 엔터티를 검색합니다.
+     * 삭제된 것으로 표시되지 않은 지정된 UUID를 가진 {@link CommonFile} 엔터티를 검색합니다.
      *
-     * @param uuid 검색할 {@link CommonFile}의 고유 식별자입니다.
-     * @return {@link CommonFile}이 있으면 이를 포함하는 {@code Optional}을 반환하고,
-     *         지정된 UUID를 가진 엔터티를 찾을 수 없으면 빈 {@code Optional}을 반환합니다.
+     * @param uuid 검색할 {@link CommonFile} 엔터티의 고유 식별자
+     * @return {@link CommonFile} 엔터티가 발견되면 해당 엔터티를 포함하는 {@link Optional}을 반환하고,
+     *         일치하는 엔터티가 발견되지 않거나 엔터티가 삭제된 것으로 표시된 경우 빈 {@link Optional}을 반환합니다.
      */
-    Optional<CommonFile> findByUuid(String uuid);
+    @Query("SELECT c FROM CommonFile c WHERE c.uuid = :uuid AND c.deleteYn = 'N'")
+    Optional<CommonFile> findByUuid(@Param("uuid") String uuid);
 
     /**
      * 지정된 테이블 이름 및 테이블 ID와 연결된 {@link CommonFile} 엔터티 목록을 검색합니다.
      *
-     * @param tableName 일치시킬 테이블의 이름입니다.
-     * @param tableId 일치시킬 테이블의 ID입니다.
+     * @param tableName 검색 시 일치시킬 테이블의 이름
+     * @param tableId 검색 시 일치시킬 테이블의 ID
      * @return 주어진 테이블 이름과 테이블 ID에 해당하는 {@link CommonFile} 엔터티 목록을 반환합니다.
      *         일치하는 엔터티가 없으면 빈 목록이 반환
      */
+    @Query("SELECT c FROM CommonFile c WHERE c.tableName = :tableName AND c.tableId = :tableId AND c.deleteYn = 'N'")
     List<CommonFile> findByTableNameAndTableId(String tableName, Long tableId);
 
-
     /**
-     * 지정된 테이블 이름 및 테이블 ID와 연관된 {@link CommonFile} 엔터티의 삭제 상태를 업데이트합니다.
-     * 삭제 플래그(`deleteYn`)를 'Y'로 설정하고 삭제 타임스탬프(`deletedAt`)를 현재 타임스탬프로 업데이트합니다.
+     * 지정된 UUID, 테이블 이름 및 테이블 ID와 연결된 {@link CommonFile} 엔터티의 삭제 상태를 업데이트합니다.
+     * `deleteYn` 필드는 'Y'로 설정되고 `deletedAt` 필드는 현재 타임스탬프로 업데이트됩니다.
+     * `deleteYn`이 'N'으로 설정된 엔터티만 영향을 받습니다.
      *
-     * @param tableName 업데이트할 {@link CommonFile} 엔터티와 연관된 테이블의 이름입니다.
-     * @param tableId 업데이트할 {@link CommonFile} 엔터티와 연관된 테이블의 ID입니다.
+     * @param uuid 업데이트할 {@link CommonFile}의 고유 식별자
+     * @param tableName 업데이트할 {@link CommonFile}과 연관된 테이블의 이름
+     * @param tableId 업데이트할 {@link CommonFile}과 연관된 테이블의 ID
      */
     @Modifying
     @Transactional
-    @Query("UPDATE CommonFile c SET c.deleteYn = 'Y', c.deletedAt = CURRENT_TIMESTAMP WHERE c.tableName = :tableName AND c.tableId = :tableId")
+    @Query("UPDATE CommonFile c SET c.deleteYn = 'Y', c.deletedAt = CURRENT_TIMESTAMP WHERE c.uuid = :uuid AND c.tableName = :tableName AND c.tableId = :tableId AND c.deleteYn = 'N'")
+    void updateDeleteStatusByUuidAndTableNameAndTableId(@Param("uuid") String uuid,
+        @Param("tableName") String tableName, @Param("tableId") Long tableId);
+
+    /**
+     * 지정된 테이블 이름 및 테이블 ID와 연관된 {@link CommonFile} 엔터티의 삭제 상태를 업데이트합니다.
+     * `deleteYn` 필드는 'Y'로 설정되고, `deletedAt` 타임스탬프는 `deleteYn`이 'N'인 엔터티의 경우 현재 시간으로 업데이트됩니다.
+     *
+     * @param tableName 업데이트할 {@link CommonFile}과 연관된 테이블의 이름
+     * @param tableId 업데이트할 {@link CommonFile}과 연관된 테이블의 ID
+     */
+    @Modifying
+    @Transactional
+    @Query("UPDATE CommonFile c SET c.deleteYn = 'Y', c.deletedAt = CURRENT_TIMESTAMP WHERE c.tableName = :tableName AND c.tableId = :tableId AND c.deleteYn = 'N'")
     void updateDeleteStatusByTableNameAndTableId(@Param("tableName") String tableName,
         @Param("tableId") Long tableId);
 
