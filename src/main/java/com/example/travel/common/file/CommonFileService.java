@@ -3,6 +3,8 @@ package com.example.travel.common.file;
 import com.example.travel.common.util.CryptoUtil;
 import com.example.travel.common.util.RandomGeneratorUtil;
 import java.io.IOException;
+import java.net.URLEncoder;
+import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
@@ -15,6 +17,10 @@ import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.core.io.Resource;
+import org.springframework.core.io.UrlResource;
+import org.springframework.http.HttpHeaders;
+import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Component;
 import org.springframework.web.multipart.MultipartFile;
 
@@ -85,6 +91,45 @@ public class CommonFileService {
      */
     public void softDeleteCommonFileBulk(String tableName, Long tableId) {
         commonFileRepository.updateDeleteStatusByTableNameAndTableId(tableName, tableId);
+    }
+
+    /**
+     * 지정된 암호화된 UUID를 사용하여 파일을 다운로드합니다.
+     * 이 메서드는 데이터베이스에서 파일 메타데이터를 찾고, 파일 시스템에서 파일을 읽어
+     * 다운로드에 적합한 HTTP 헤더와 함께 ResponseEntity<Resource>로 반환합니다.
+     *
+     * @param encryptedUuid 다운로드할 파일의 암호화된 고유 식별자
+     * @return 파일 리소스와 다운로드 헤더를 포함하는 ResponseEntity 객체
+     * @throws IOException 파일을 찾을 수 없거나 읽는 중 오류가 발생할 경우
+     */
+    public ResponseEntity<Resource> downloadFile(String encryptedUuid) throws IOException {
+        // 1. UUID 복호화 및 파일 정보 조회
+        CommonFile commonFile = commonFileRepository.findByUuid(cryptoUtil.decrypt(encryptedUuid))
+            .orElseThrow(() -> new IOException("파일 정보를 찾을 수 없습니다"));
+
+        // 2. 실제 파일 경로 생성
+        Path filePath = Paths.get(FILE_UPLOAD_PATH).resolve(commonFile.getFilePath()).normalize();
+        Resource resource = new UrlResource(filePath.toUri());
+
+        // 3. 파일 존재 여부 및 가독성 확인
+        if (!resource.exists() || !resource.isReadable()) {
+            throw new IOException("파일을 찾을 수 없거나 읽을 수 없습니다. Path: " + filePath);
+        }
+
+        // 4. 원본 파일 이름 인코딩 (브라우저 호환성)
+        String originalFileName = commonFile.getOriginalFileName();
+        String encodedFileName = URLEncoder.encode(originalFileName, StandardCharsets.UTF_8).replaceAll("\\+", "%20");
+
+        // 5. HTTP 헤더 설정
+        HttpHeaders headers = new HttpHeaders();
+        headers.add(HttpHeaders.CONTENT_DISPOSITION, "attachment; filename=\"" + encodedFileName + "\"");
+        headers.add(HttpHeaders.CONTENT_TYPE, Files.probeContentType(filePath));
+        headers.add(HttpHeaders.CONTENT_LENGTH, String.valueOf(commonFile.getFileSize()));
+
+        // 6. ResponseEntity를 통해 파일 리소스와 헤더 반환
+        return ResponseEntity.ok()
+            .headers(headers)
+            .body(resource);
     }
 
     /**
