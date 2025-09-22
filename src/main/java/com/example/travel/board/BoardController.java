@@ -24,7 +24,7 @@ import org.springframework.web.multipart.MultipartFile;
  * CRUD 작업과 대량 삭제, 샘플 데이터 초기화와 같은 추가 기능을 위한 엔드포인트를 제공합니다.
  */
 @RestController
-@RequestMapping("/api/boards")
+@RequestMapping("/api/board")
 public class BoardController {
 
     private static final Logger log = LoggerFactory.getLogger(BoardController.class);
@@ -55,7 +55,7 @@ public class BoardController {
      * @return 성공 시 검색된 보드을 포함하는 ResponseEntity를 반환하고, 오류가 발생하면 잘못된 요청 응답을 반환합니다.
      */
     @GetMapping("/{uuid}")
-    public ResponseEntity<Board> getBoardByUuid(@PathVariable String uuid) {
+    public ResponseEntity<BoardResponse> getBoardByUuid(@PathVariable String uuid) {
 
         try {
             return ResponseEntity.ok(boardService.getBoardByUuid(uuid));
