@@ -102,11 +102,13 @@ public class BoardController {
     @PutMapping("/{uuid}")
     public ResponseEntity<BoardResponse> updateBoard(HttpServletRequest request,
         @PathVariable String uuid, @ModelAttribute Board boardDetail,
-        @RequestParam("deleteFileId") String deleteFileId, @RequestParam("files") List<MultipartFile> files) {
+        @RequestParam(value = "deleteFileId", required = false) String deleteFileId,
+        @RequestParam(value = "files", required = false) List<MultipartFile> files) {
 
         try {
             String email = boardService.getEmail(request);
-            return ResponseEntity.ok(boardService.updateBoard(email, uuid, boardDetail, deleteFileId, files));
+            return ResponseEntity.ok(
+                boardService.updateBoard(email, uuid, boardDetail, deleteFileId, files));
         } catch (RuntimeException e) {
             log.error(e.getMessage());
             return ResponseEntity.badRequest().build();

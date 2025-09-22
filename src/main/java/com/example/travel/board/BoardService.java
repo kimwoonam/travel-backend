@@ -71,7 +71,7 @@ public class BoardService {
         throws RuntimeException {
 
         List<CommonFile> commonFiles = null;
-        if (!files.isEmpty()) {
+        if (!Objects.isNull(files) && !files.isEmpty()) {
             commonFiles = new ArrayList<>();
             for (MultipartFile file : files) {
                 CommonFile commonFile = new CommonFile();
@@ -186,6 +186,7 @@ public class BoardService {
      * @return 업데이트된 보드 세부 정보와 관련 파일을 포함하는 {@code BoardResponse} 객체
      * @throws RuntimeException 사용자 정보를 검색할 수 없거나 게시판을 찾을 수 없는 경우
      */
+    @Transactional
     public BoardResponse updateBoard(String email, String encryptedUuid, Board boardDetail,
         String deleteFileId, List<MultipartFile> files) {
 
@@ -197,7 +198,7 @@ public class BoardService {
         // 삭제 할 파일 정보
         String[] deleteFileIds = deleteFileId.split(",");
         for (String fileId : deleteFileIds) {
-            commonFileService.softDeleteCommonFile(fileId, "board", board.getId());
+            commonFileService.softDeleteCommonFile(cryptoUtil.decrypt(fileId), "board", board.getId());
         }
 
         board.setTitle(boardDetail.getTitle());
