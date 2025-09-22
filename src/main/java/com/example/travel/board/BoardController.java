@@ -77,7 +77,7 @@ public class BoardController {
     @PostMapping
     @Transactional
     public ResponseEntity<BoardResponse> createBoard(HttpServletRequest request,
-        @ModelAttribute Board board, @RequestParam("file") List<MultipartFile> files) {
+        @ModelAttribute Board board, @RequestParam("files") List<MultipartFile> files) {
 
         try {
             String email = boardService.getEmail(request);
@@ -102,7 +102,7 @@ public class BoardController {
     @PutMapping("/{uuid}")
     public ResponseEntity<BoardResponse> updateBoard(HttpServletRequest request,
         @PathVariable String uuid, @ModelAttribute Board boardDetail,
-        @RequestParam("deleteFileId") String deleteFileId, @RequestParam("file") List<MultipartFile> files) {
+        @RequestParam("deleteFileId") String deleteFileId, @RequestParam("files") List<MultipartFile> files) {
 
         try {
             String email = boardService.getEmail(request);
