@@ -48,6 +48,12 @@ public class CommonFileService {
     @Value("${file.upload.path}")
     private String FILE_UPLOAD_PATH;
 
+    @Value("${file.upload.allowed.extension}")
+    private String ALLOWED_EXTENSIONS;
+
+    @Value("${file.upload.image.allowed.extension}")
+    private String IMAGE_ALLOWED_EXTENSIONS;
+
     @Autowired
     public CommonFileService(CommonFileRepository commonFileRepository, JwtProvider jwtProvider,
         RedisProvider redisProvider, CryptoUtil cryptoUtil) {
@@ -163,7 +169,7 @@ public class CommonFileService {
      */
     public void writeFile(MultipartFile file, CommonFile commonFile) throws RuntimeException {
 
-        if (file.isEmpty()) {
+        if (Objects.isNull(file) || file.isEmpty()) {
             log.error("업로드할 파일을 선택해 주세요.");
             throw new RuntimeException("업로드할 파일을 선택해 주세요.");
         }
@@ -172,6 +178,11 @@ public class CommonFileService {
         if (Objects.requireNonNull(originalFileName).lastIndexOf(".") < 0) {
             log.error("파일 확장자를 찾을 수 없습니다.");
             throw new RuntimeException("파일 확장자를 찾을 수 없습니다.");
+        }
+
+        if (!ALLOWED_EXTENSIONS.contains(originalFileName)) {
+            log.error("지정되지 않은 파일 확장자 입니다.");
+            throw new RuntimeException("지정되지 않은 파일 확장자 입니다.");
         }
 
         LocalDate today = LocalDate.now();
@@ -185,7 +196,25 @@ public class CommonFileService {
         // 디렉토리 경로
         Path path = Path.of(FILE_UPLOAD_PATH + sDirPath);
         // 디렉토리 + 파일 경로
-        Path filePath = Paths.get(FILE_UPLOAD_PATH + sFilePath);
+        if (sFilePath.contains("..")) {
+            log.error("파일이름에 '..'가 포함 될 수 없습니다. {}", sFilePath);
+            throw new IllegalArgumentException("파일이름에 '..'가 포함 될 수 없습니다. ");
+        }
+
+        // 2. FILE_UPLOAD_PATH를 Path 객체로 만듭니다.
+        Path uploadDir = Paths.get(FILE_UPLOAD_PATH).toAbsolutePath().normalize();
+
+        // 3. 사용자 입력으로 받은 경로를 안전한 경로에 결합합니다.
+        // Paths.get()은 경로를 안전하게 조합하는 데 도움을 줍니다.
+        Path uploadFilePath = uploadDir.resolve(sFilePath).normalize();
+
+        // 4. 최종 정규화된 경로가 업로드 디렉터리 하위에 있는지 확인합니다.
+        // `startsWith()` 메서드를 사용하여 외부 경로 접근을 방지합니다.
+        if (!uploadFilePath.startsWith(uploadDir)) {
+            log.error("지정된 경로가 아닙니다. uploadDir : {} uploadFilePath : {}", uploadDir,
+                uploadFilePath);
+            throw new IllegalArgumentException("지정된 경로가 아닙니다.");
+        }
 
         try {
 
@@ -205,14 +234,16 @@ public class CommonFileService {
 
             commonFileRepository.save(commonFile);
 
-            Files.write(filePath, file.getBytes());
+            Files.write(uploadFilePath, file.getBytes());
 
         } catch (IOException e) {
             throw new RuntimeException(e);
         } catch (RuntimeException e) {
             log.error(e.getMessage());
             try {
-                Files.delete(filePath);
+                if (Files.exists(uploadFilePath)) {
+                    Files.delete(uploadFilePath);
+                }
             } catch (IOException ioe) {
                 log.error(ioe.getMessage());
             }
