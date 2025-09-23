@@ -77,7 +77,7 @@ public class BoardController {
     @PostMapping
     @Transactional
     public ResponseEntity<BoardResponse> createBoard(HttpServletRequest request,
-        @ModelAttribute Board board, @RequestParam("files") List<MultipartFile> files) {
+        @ModelAttribute Board board, @RequestParam(name = "files", required = false) List<MultipartFile> files) {
 
         try {
             String email = boardService.getEmail(request);
