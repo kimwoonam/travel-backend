@@ -1,11 +1,15 @@
 package com.example.travel.account;
 
+import com.example.travel.account.dto.AccountDto;
 import com.example.travel.account.dto.AccountDto.LoginResponse;
 import com.example.travel.account.dto.AccountDto.SignupRequest;
 import com.example.travel.common.provider.JwtProvider;
 import com.example.travel.common.provider.RedisProvider;
-import com.example.travel.account.dto.AccountDto;
+import jakarta.servlet.http.HttpServletRequest;
+import java.util.Objects;
 import java.util.UUID;
+import org.apache.logging.log4j.LogManager;
+import org.apache.logging.log4j.Logger;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.ResponseCookie;
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
@@ -20,8 +24,11 @@ import org.springframework.transaction.annotation.Transactional;
 @Service
 public class AccountService {
 
-    private final AccountRepository accountRepository;
+    private static final Logger log = LogManager.getLogger(AccountService.class);
+
     private final PasswordEncoder passwordEncoder = new BCryptPasswordEncoder();
+
+    private final AccountRepository accountRepository;
     private final JwtProvider jwtProvider;
     private final RedisProvider redisProvider;
 
@@ -112,7 +119,7 @@ public class AccountService {
      * @param token 세션을 식별하여 로그아웃하는 데 사용되는 JWT 토큰
      * @throws IllegalArgumentException 토큰이 유효하지 않거나 사용자를 찾을 수 없는 경우 반환
      */
-     public void logout(String token) {
+    public void logout(String token) {
         try {
             Account account = accountRepository.findByEmail(jwtProvider.getEmail(token))
                 .orElseThrow(() -> new IllegalArgumentException("User not found"));
@@ -121,6 +128,37 @@ public class AccountService {
         } catch (Exception e) {
             throw new IllegalArgumentException("Invalid token");
         }
+    }
+
+    /**
+     * Retrieves an account associated with the given email address.
+     * If no account is found, an exception is thrown.
+     *
+     * @param email the email address used to identify the account
+     * @return the account associated with the specified email
+     * @throws IllegalArgumentException if no account is found for the given email
+     */
+    public Account getAccountByEmail(String email) {
+        return redisProvider.getUserInfo(email)
+            .orElseThrow(() -> new IllegalArgumentException("User not found"));
+    }
+
+    /**
+     * 주어진 HTTP 서블릿 요청에서 이메일 속성을 가져옵니다.
+     * 이메일 속성이 null이면 RuntimeException이 발생합니다.
+     *
+     * @param request 이메일 속성을 포함하는 HttpServletRequest 객체
+     * @return 문자열로 된 이메일 속성
+     * @throws RuntimeException 이메일 속성이 null인 경우
+     */
+    public String getEmail(HttpServletRequest request) throws RuntimeException {
+
+        if (Objects.isNull(request.getAttribute("email"))) {
+            log.error("email not null");
+            throw new RuntimeException("email is null");
+        }
+
+        return request.getAttribute("email").toString();
     }
 
     /**

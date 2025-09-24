@@ -1,13 +1,12 @@
 package com.example.travel.board;
 
 import com.example.travel.account.Account;
+import com.example.travel.account.AccountService;
 import com.example.travel.board.dto.BoardDto.BoardResponse;
 import com.example.travel.common.file.CommonFile;
 import com.example.travel.common.file.CommonFileRepository;
 import com.example.travel.common.file.CommonFileService;
-import com.example.travel.common.provider.RedisProvider;
 import com.example.travel.common.util.CryptoUtil;
-import jakarta.servlet.http.HttpServletRequest;
 import jakarta.transaction.Transactional;
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -28,21 +27,22 @@ import org.springframework.web.multipart.MultipartFile;
 public class BoardService {
 
     private static final Logger log = LoggerFactory.getLogger(BoardService.class);
+
     private final BoardRepository boardRepository;
     private final CryptoUtil cryptoUtil;
     private final CommonFileService commonFileService;
-    private final RedisProvider redisProvider;
     private final CommonFileRepository commonFileRepository;
+    private final AccountService accountService;
 
     @Autowired
     public BoardService(BoardRepository boardRepository, CryptoUtil cryptoUtil,
-        CommonFileService commonFileService, RedisProvider redisProvider,
-        CommonFileRepository commonFileRepository) {
+        CommonFileService commonFileService, CommonFileRepository commonFileRepository,
+        AccountService accountService) {
         this.boardRepository = boardRepository;
         this.cryptoUtil = cryptoUtil;
         this.commonFileService = commonFileService;
-        this.redisProvider = redisProvider;
         this.commonFileRepository = commonFileRepository;
+        this.accountService = accountService;
     }
 
     /**
@@ -52,7 +52,7 @@ public class BoardService {
      * @return 생성된 UUID로 저장된 Board 객체
      * @throws RuntimeException 저장 작업 중에 문제가 발생
      */
-    private Board saveBoard(Board board) throws RuntimeException {
+    private Board save(Board board) throws RuntimeException {
         // UUID 자동 생성
         String uuid = UUID.randomUUID().toString();
         board.setUuid(uuid);
@@ -82,24 +82,6 @@ public class BoardService {
             }
         }
         return commonFiles;
-    }
-
-    /**
-     * 주어진 HTTP 서블릿 요청에서 이메일 속성을 가져옵니다.
-     * 이메일 속성이 null이면 RuntimeException이 발생합니다.
-     *
-     * @param request 이메일 속성을 포함하는 HttpServletRequest 객체
-     * @return 문자열로 된 이메일 속성
-     * @throws RuntimeException 이메일 속성이 null인 경우
-     */
-    public String getEmail(HttpServletRequest request) throws RuntimeException {
-
-        if (Objects.isNull(request.getAttribute("email"))) {
-            log.error("email not null");
-            throw new RuntimeException("email is null");
-        }
-
-        return request.getAttribute("email").toString();
     }
 
     /**
@@ -135,8 +117,10 @@ public class BoardService {
         // 조회 시 UUID를 암호화하여 반환
         board.setUuid(cryptoUtil.encrypt(board.getUuid()));
 
-        List<CommonFile> commonFiles = commonFileRepository.findByTableNameAndTableId("board", board.getId());
-        commonFiles.forEach(commonFile -> commonFile.setUuid(cryptoUtil.encrypt(commonFile.getUuid())));
+        List<CommonFile> commonFiles = commonFileRepository.findByTableNameAndTableId("board",
+            board.getId());
+        commonFiles.forEach(
+            commonFile -> commonFile.setUuid(cryptoUtil.encrypt(commonFile.getUuid())));
 
         return new BoardResponse(board, commonFiles);
     }
@@ -146,13 +130,12 @@ public class BoardService {
      *
      * @param board 저장해야 할 필수 세부 정보를 포함하는 Board 엔터티
      */
-    public void createBoard(Board board, String email) throws RuntimeException {
+    public void create(Board board, String email) throws RuntimeException {
 
-        Account account = redisProvider.getUserInfo(email)
-            .orElseThrow(() -> new RuntimeException("Not logged in"));
+        Account account = accountService.getAccountByEmail(email);
         board.setAccountUuid(account.getUuid());
 
-        this.saveBoard(board);
+        this.save(board);
     }
 
     /**
@@ -163,14 +146,13 @@ public class BoardService {
      * @return 보드 엔터티와 연관된 파일 목록을 결합한 BoardResponse 객체를 반환합니다.
      * @throws RuntimeException 보드를 저장하거나 파일을 처리하는 동안 오류가 발생하는 경우 발생
      */
-    public BoardResponse createBoard(Board reqBoard, String email, List<MultipartFile> files)
+    public BoardResponse create(Board reqBoard, String email, List<MultipartFile> files)
         throws RuntimeException {
 
-        Account account = redisProvider.getUserInfo(email)
-            .orElseThrow(() -> new RuntimeException("UserInfo is null"));
+        Account account = accountService.getAccountByEmail(email);
         reqBoard.setAccountUuid(account.getUuid());
 
-        Board board = this.saveBoard(reqBoard);
+        Board board = this.save(reqBoard);
         List<CommonFile> commonFiles = this.saveCommonFiles(files, board.getId());
 
         return new BoardResponse(board, commonFiles);
@@ -187,11 +169,10 @@ public class BoardService {
      * @throws RuntimeException 사용자 정보를 검색할 수 없거나 게시판을 찾을 수 없는 경우
      */
     @Transactional
-    public BoardResponse updateBoard(String email, String encryptedUuid, Board boardDetail,
+    public BoardResponse update(String email, String encryptedUuid, Board boardDetail,
         String deleteFileId, List<MultipartFile> files) {
 
-        Account account = redisProvider.getUserInfo(email)
-            .orElseThrow(() -> new RuntimeException("UserInfo is null"));
+        Account account = accountService.getAccountByEmail(email);
         Board board = boardRepository.findByUuidAndAccountUuid(cryptoUtil.decrypt(encryptedUuid),
             account.getUuid()).orElseThrow(() -> new RuntimeException("게시글을 찾을 수 없습니다."));
 
@@ -199,7 +180,8 @@ public class BoardService {
         String[] deleteFileIds = deleteFileId.split(",");
         if (deleteFileIds.length > 0 && !deleteFileIds[0].isEmpty()) {
             for (String fileId : deleteFileIds) {
-                commonFileService.softDeleteCommonFile(cryptoUtil.decrypt(fileId), "board", board.getId());
+                commonFileService.softDeleteCommonFile(cryptoUtil.decrypt(fileId), "board",
+                    board.getId());
             }
         }
 
@@ -219,10 +201,9 @@ public class BoardService {
      * @param encryptedUuid 삭제할 보드의 암호화된 UUID
      * @throws RuntimeException 사용자 정보가 없거나 지정된 게시판이 존재하지 않는 경우
      */
-    public void deleteBoard(String email, String encryptedUuid) {
+    public void delete(String email, String encryptedUuid) {
 
-        Account account = redisProvider.getUserInfo(email)
-            .orElseThrow(() -> new RuntimeException("UserInfo is null"));
+        Account account = accountService.getAccountByEmail(email);
         Board board = boardRepository.findByUuidAndAccountUuid(cryptoUtil.decrypt(encryptedUuid),
             account.getUuid()).orElseThrow(() -> new RuntimeException("게시글을 찾을 수 없습니다."));
         commonFileService.softDeleteCommonFileBulk("board", board.getId());
@@ -241,7 +222,7 @@ public class BoardService {
      * @throws RuntimeException UUID가 비어 있거나 사용자 정보를 검색할 수 없는 경우
      */
     @Transactional
-    public void deleteBoardBulk(String email, String uuid) throws RuntimeException {
+    public void deleteBulk(String email, String uuid) throws RuntimeException {
 
         if (uuid.isEmpty()) {
             throw new RuntimeException("uuid is empty");
@@ -249,8 +230,7 @@ public class BoardService {
 
         List<String> uuids = Arrays.asList(uuid.split(","));
 
-        Account account = redisProvider.getUserInfo(email)
-            .orElseThrow(() -> new RuntimeException("UserInfo is null"));
+        Account account = accountService.getAccountByEmail(email);
         uuids.forEach(encryptedUuid -> {
             Board board = boardRepository.findByUuidAndAccountUuid(
                 cryptoUtil.decrypt(encryptedUuid), account.getUuid()).orElse(null);

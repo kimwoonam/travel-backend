@@ -1,5 +1,6 @@
 package com.example.travel.board;
 
+import com.example.travel.account.AccountService;
 import com.example.travel.board.dto.BoardDto.BoardResponse;
 import jakarta.servlet.http.HttpServletRequest;
 import java.util.List;
@@ -29,10 +30,12 @@ public class BoardController {
 
     private static final Logger log = LoggerFactory.getLogger(BoardController.class);
 
+    private final AccountService accountService;
     private final BoardService boardService;
 
     @Autowired
-    public BoardController(BoardService boardService) {
+    public BoardController(AccountService accountService, BoardService boardService) {
+        this.accountService = accountService;
         this.boardService = boardService;
     }
 
@@ -80,8 +83,8 @@ public class BoardController {
         @ModelAttribute Board board, @RequestParam(name = "files", required = false) List<MultipartFile> files) {
 
         try {
-            String email = boardService.getEmail(request);
-            return ResponseEntity.ok(boardService.createBoard(board, email, files));
+            String email = accountService.getEmail(request);
+            return ResponseEntity.ok(boardService.create(board, email, files));
         } catch (RuntimeException e) {
             log.error(e.getMessage());
             return ResponseEntity.badRequest().build();
@@ -106,9 +109,9 @@ public class BoardController {
         @RequestParam(value = "files", required = false) List<MultipartFile> files) {
 
         try {
-            String email = boardService.getEmail(request);
+            String email = accountService.getEmail(request);
             return ResponseEntity.ok(
-                boardService.updateBoard(email, uuid, boardDetail, deleteFileId, files));
+                boardService.update(email, uuid, boardDetail, deleteFileId, files));
         } catch (RuntimeException e) {
             log.error(e.getMessage());
             return ResponseEntity.badRequest().build();
@@ -126,8 +129,8 @@ public class BoardController {
     @Transactional
     public ResponseEntity<Void> deleteBoard(HttpServletRequest request, @PathVariable String uuid) {
         try {
-            String email = boardService.getEmail(request);
-            boardService.deleteBoard(email, uuid);
+            String email = accountService.getEmail(request);
+            boardService.delete(email, uuid);
             return ResponseEntity.ok().build();
         } catch (RuntimeException e) {
             log.error(e.getMessage());
@@ -150,8 +153,8 @@ public class BoardController {
         @PathVariable String uuids) {
 
         try {
-            String email = boardService.getEmail(request);
-            boardService.deleteBoardBulk(email, uuids);
+            String email = accountService.getEmail(request);
+            boardService.deleteBulk(email, uuids);
             return ResponseEntity.noContent().build();
         } catch (RuntimeException e) {
             log.error(e.getMessage());
@@ -172,7 +175,7 @@ public class BoardController {
 
         try {
 
-            String email = boardService.getEmail(request);
+            String email = accountService.getEmail(request);
 
             // 기존 데이터가 없을 때만 샘플 데이터 추가
             if (boardService.getAllBoards().isEmpty()) {
@@ -193,9 +196,9 @@ public class BoardController {
                     "서울 여행 필수 코스! 경복궁, 남산타워, 홍대, 명동 등을 추천합니다. 특히 봄철 벚꽃이 피는 시기가 최고예요.");
                 board3.setNickName("서울가이드");
 
-                boardService.createBoard(board1, email);
-                boardService.createBoard(board2, email);
-                boardService.createBoard(board3, email);
+                boardService.create(board1, email);
+                boardService.create(board2, email);
+                boardService.create(board3, email);
 
                 return ResponseEntity.ok("샘플 데이터가 추가되었습니다.");
             } else {

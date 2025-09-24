@@ -47,7 +47,7 @@ public class WebConfig implements WebMvcConfigurer {
             .addPathPatterns("/api/**")
             .excludePathPatterns(
                 "/api/auth/**"
-                , "/api/file/**"
+                , "/api/file/download/**"
             );
     }
 }
