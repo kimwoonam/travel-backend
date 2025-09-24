@@ -48,6 +48,9 @@ public class CommonFileService {
     @Value("${file.upload.path}")
     private String FILE_UPLOAD_PATH;
 
+    @Value("${file.upload.image.path}")
+    private String IMAGE_FILE_UPLOAD_PATH;
+
     @Value("${file.upload.allowed.extension}")
     private String ALLOWED_EXTENSIONS;
 
@@ -109,7 +112,7 @@ public class CommonFileService {
      *
      * @param token 인증 및 권한 부여에 사용되는 JWT 토큰
      * @param encryptedUuid 다운로드할 파일의 암호화된 고유 식별자
-     * @return @code ResponseEntity<Resource>}는 HTTP 헤더와 함께 파일을 리소스로 포함
+     * @return @code {ResponseEntity<Resource>}는 HTTP 헤더와 함께 파일을 리소스로 포함
      * @throws RuntimeException 토큰이 유효하지 않거나 토큰이 로그아웃으로 표시된 경우 발생
      * @throws IOException 파일 정보를 검색할 수 없거나, 파일이 존재하지 않거나, 파일을 읽는 중 오류가 발생한 경우
      */
@@ -159,15 +162,17 @@ public class CommonFileService {
     }
 
     /**
-     * 지정된 디렉터리에 파일을 저장하고 파일 메타데이터로 {@code CommonFile} 엔터티를 업데이트합니다.
-     * 이 메서드는 디렉터리 존재 여부를 확인하고 저장하기 전에 고유한 파일 이름을 지정합니다.
-     * 처리 중 오류가 발생하면 파일이 삭제되고 {@code RuntimeException}이 발생합니다.
+     * 지정된 규칙과 허용되는 파일 유형에 따라 제공된 파일의 유효성을 검사합니다.
+     * 파일이 null이거나 비어 있지 않은지, 유효한 파일 확장자를 가지고 있는지,
+     * 그리고 이름에 유효하지 않은 문자가 포함되어 있지 않은지 확인합니다. 또한,
+     * 허용되는 파일 확장자를 통해 지정된 유형의 파일 확장자를 확인합니다.
      *
-     * @param file 저장할 다중 파트 파일입니다. 비어 있을 수 없습니다.
-     * @param commonFile 파일 메타데이터로 업데이트할 {@code CommonFile} 엔터티
-     * @throws RuntimeException 파일이 비어 있거나, 경로 생성 중 오류가 발생하거나, 파일 확장자를 확인할 수 없는 경우
+     * @param file 검증할 멀티파트 파일입니다. null이거나 비어 있을 수 없습니다.
+     * @param allowedType 허용되는 파일 유형(예: "image")은 허용되는 파일 확장자를 결정합니다.
+     * @throws RuntimeException 파일이 null이거나 비어 있거나, 확장자가 잘못되었거나 누락되었거나,
+     *                          이름에 안전하지 않은 문자가 포함되어 있거나, 허용된 확장자와 일치하지 않는 경우 발생
      */
-    public void writeFile(MultipartFile file, CommonFile commonFile) throws RuntimeException {
+    private void validation(MultipartFile file, String allowedType) throws RuntimeException {
 
         if (Objects.isNull(file) || file.isEmpty()) {
             log.error("업로드할 파일을 선택해 주세요.");
@@ -180,29 +185,52 @@ public class CommonFileService {
             throw new RuntimeException("파일 확장자를 찾을 수 없습니다.");
         }
 
-        if (!ALLOWED_EXTENSIONS.contains(originalFileName)) {
-            log.error("지정되지 않은 파일 확장자 입니다.");
+        if (originalFileName.contains("..")) {
+            log.error("파일이름에 '..'가 포함 될 수 없습니다. {}", originalFileName);
+            throw new RuntimeException("파일이름에 '..'가 포함 될 수 없습니다. ");
+        }
+
+        String fileExtension = originalFileName.substring(originalFileName.lastIndexOf(".") + 1);
+
+        if (!(allowedType.equals("image") ? IMAGE_ALLOWED_EXTENSIONS : ALLOWED_EXTENSIONS).contains(
+            fileExtension)) {
+            log.error("지정되지 않은 확장자 입니다.");
             throw new RuntimeException("지정되지 않은 파일 확장자 입니다.");
         }
+    }
+
+    /**
+     * 파일 업로드를 처리하여 메타데이터를 저장하고 지정된 디렉터리에 파일을 기록합니다.
+     * 이 메서드는 업로드 경로가 유효하고 안전한지 확인하고, 필요한 디렉터리가 없는 경우 디렉터리를 생성합니다.
+     * 또한 업로드된 파일에 대한 임의의 고유 식별자와 파일 이름을 생성합니다.
+     *
+     * @param file 업로드되는 파일, MultipartFile로 표현됨
+     * @param commonFile 업로드된 파일에 대한 메타데이터를 저장할 CommonFile 객체
+     * @param allowedType allowedType 업로드되는 파일의 유형(예: "image")은 업로드 경로를 결정하는 데 사용
+     * @throws RuntimeException 업로드 경로가 안전하지 않거나 파일을 쓰는 동안 오류가 발생하는 경우 발생
+     */
+    private void write(MultipartFile file, CommonFile commonFile, String allowedType)
+        throws RuntimeException {
+
+        commonFile.setUuid(UUID.randomUUID().toString());
+        commonFile.setChangeFileName(RandomGeneratorUtil.generateRandomString(30));
+        commonFile.setOriginalFileName(file.getOriginalFilename());
+        commonFile.setFileExtension(Objects.requireNonNull(file.getOriginalFilename())
+            .substring(file.getOriginalFilename().lastIndexOf(".") + 1));
 
         LocalDate today = LocalDate.now();
         DateTimeFormatter formatter = DateTimeFormatter.ofPattern("yyyyMMdd");
-
         String formattedDate = today.format(formatter);
-        String fileExtension = originalFileName.substring(originalFileName.lastIndexOf(".") + 1);
-        String changeFileName = RandomGeneratorUtil.generateRandomString(30);
         String sDirPath = formattedDate + "/";
-        String sFilePath = sDirPath + changeFileName + "." + fileExtension;
+        String sFilePath =
+            sDirPath + commonFile.getChangeFileName() + "." + commonFile.getFileExtension();
         // 디렉토리 경로
-        Path path = Path.of(FILE_UPLOAD_PATH + sDirPath);
-        // 디렉토리 + 파일 경로
-        if (sFilePath.contains("..")) {
-            log.error("파일이름에 '..'가 포함 될 수 없습니다. {}", sFilePath);
-            throw new IllegalArgumentException("파일이름에 '..'가 포함 될 수 없습니다. ");
-        }
-
+        Path path = Path.of(
+            (allowedType.equals("image") ? IMAGE_FILE_UPLOAD_PATH : FILE_UPLOAD_PATH) + sDirPath);
         // 2. FILE_UPLOAD_PATH를 Path 객체로 만듭니다.
-        Path uploadDir = Paths.get(FILE_UPLOAD_PATH).toAbsolutePath().normalize();
+        Path uploadDir = Paths.get(
+                (allowedType.equals("image") ? IMAGE_FILE_UPLOAD_PATH : FILE_UPLOAD_PATH))
+            .toAbsolutePath().normalize();
 
         // 3. 사용자 입력으로 받은 경로를 안전한 경로에 결합합니다.
         // Paths.get()은 경로를 안전하게 조합하는 데 도움을 줍니다.
@@ -211,9 +239,8 @@ public class CommonFileService {
         // 4. 최종 정규화된 경로가 업로드 디렉터리 하위에 있는지 확인합니다.
         // `startsWith()` 메서드를 사용하여 외부 경로 접근을 방지합니다.
         if (!uploadFilePath.startsWith(uploadDir)) {
-            log.error("지정된 경로가 아닙니다. uploadDir : {} uploadFilePath : {}", uploadDir,
-                uploadFilePath);
-            throw new IllegalArgumentException("지정된 경로가 아닙니다.");
+            log.error("uploadDir : {} uploadFilePath : {}", uploadDir, uploadFilePath);
+            throw new RuntimeException("지정된 경로가 아닙니다.");
         }
 
         try {
@@ -224,14 +251,7 @@ public class CommonFileService {
                 Files.createDirectories(path);
             }
 
-            // 저장할 파일정보 설정
-            commonFile.setUuid(UUID.randomUUID().toString());
             commonFile.setFilePath(sFilePath);
-            commonFile.setFileSize(file.getSize());
-            commonFile.setChangeFileName(changeFileName);
-            commonFile.setOriginalFileName(originalFileName);
-            commonFile.setFileExtension(fileExtension);
-
             commonFileRepository.save(commonFile);
 
             Files.write(uploadFilePath, file.getBytes());
@@ -249,6 +269,38 @@ public class CommonFileService {
             }
             throw new RuntimeException(e);
         }
+    }
+
+    /**
+     * 제공된 {@link CommonFile} 엔티티 정보를 기반으로 이미지 파일의 업로드 프로세스를 처리합니다.
+     * 이 메서드는 파일의 유효성을 검사한 후 업로드 프로세스를 내부 메서드에 위임합니다.
+     *
+     * @param file 업로드할 이미지 파일입니다. null이거나 비어 있지 않은 유효한 {@link MultipartFile} 객체여야 하며,
+     *             이미지 파일에 허용되는 파일 확장자를 준수해야 합니다.
+     * @param commonFile 파일에 대한 메타데이터(예: 연관된 테이블 이름, 테이블 ID 및 기타 관련 세부 정보)를 포함하는 {@link CommonFile} 엔터티입니다.
+     * @throws RuntimeException 파일 검증에 실패하거나 업로드 과정에서 오류가 발생하면 발생
+     */
+    public void imageUpload(MultipartFile file, CommonFile commonFile) throws RuntimeException {
+
+        String allowedType = "image";
+        validation(file, allowedType);
+        this.write(file, commonFile, allowedType);
+    }
+
+    /**
+     * 파일을 업로드하고 제공된 {@link CommonFile} 엔티티 정보를 기반으로 처리합니다.
+     * 이 메서드는 파일의 유효성을 검사하고 파일 업로드 프로세스를 다른 내부 메서드에 위임합니다.
+     *
+     * @param file 업로드할 파일입니다. null이거나 비어 있지 않은 유효한 {@link MultipartFile} 객체여야 하며,
+     *             이미지 파일에 허용되는 파일 확장자를 준수해야 합니다.
+     * @param commonFile 파일에 대한 메타데이터(예: 연관된 테이블 이름, 테이블 ID 및 기타 관련 세부 정보)를 포함하는 {@link CommonFile} 엔터티입니다.
+     * @throws RuntimeException 파일 검증에 실패하거나 업로드 과정에서 오류가 발생하면 발생
+     */
+    public void upload(MultipartFile file, CommonFile commonFile) throws RuntimeException {
+
+        String allowedType = "file";
+        validation(file, allowedType);
+        this.write(file, commonFile, allowedType);
     }
 
     /**
