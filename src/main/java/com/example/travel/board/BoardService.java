@@ -77,7 +77,7 @@ public class BoardService {
                 CommonFile commonFile = new CommonFile();
                 commonFile.setTableName("board");
                 commonFile.setTableId(boardId);
-                commonFileService.writeFile(file, commonFile);
+                commonFileService.upload(file, commonFile);
                 commonFiles.add(commonFile);
             }
         }
@@ -197,8 +197,10 @@ public class BoardService {
 
         // 삭제 할 파일 정보
         String[] deleteFileIds = deleteFileId.split(",");
-        for (String fileId : deleteFileIds) {
-            commonFileService.softDeleteCommonFile(cryptoUtil.decrypt(fileId), "board", board.getId());
+        if (deleteFileIds.length > 0 && !deleteFileIds[0].isEmpty()) {
+            for (String fileId : deleteFileIds) {
+                commonFileService.softDeleteCommonFile(cryptoUtil.decrypt(fileId), "board", board.getId());
+            }
         }
 
         board.setTitle(boardDetail.getTitle());
