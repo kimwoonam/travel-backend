@@ -1,15 +1,23 @@
 package com.example.travel.common.file;
 
+import com.example.travel.account.AccountService;
+import jakarta.servlet.http.HttpServletRequest;
 import java.io.IOException;
+import java.util.Map;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.core.io.Resource;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.ModelAttribute;
 import org.springframework.web.bind.annotation.PathVariable;
+import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestParam;
+import org.springframework.web.bind.annotation.ResponseBody;
 import org.springframework.web.bind.annotation.RestController;
+import org.springframework.web.multipart.MultipartFile;
 
 /**
  * 이 컨트롤러는 파일 관련 작업을 위한 API 엔드포인트를 제공합니다.
@@ -20,10 +28,14 @@ import org.springframework.web.bind.annotation.RestController;
 public class CommonFileController {
 
     private static final Logger log = LogManager.getLogger(CommonFileController.class);
+
+    private final AccountService accountService;
     private final CommonFileService commonFileService;
 
     @Autowired
-    public CommonFileController(CommonFileService commonFileService) {
+    public CommonFileController(AccountService accountService,
+        CommonFileService commonFileService) {
+        this.accountService = accountService;
         this.commonFileService = commonFileService;
     }
 
@@ -37,7 +49,7 @@ public class CommonFileController {
      * @return 작업이 성공하면 요청된 파일을 리소스로 포함하는 ResponseEntity를 반환하고,
      *         처리 중 오류가 발생하면 잘못된 요청 응답을 반환합니다.
      */
-    @GetMapping("/{param}")
+    @GetMapping("/download/{param}")
     public ResponseEntity<Resource> download(@PathVariable String param) {
 
         try {
@@ -56,5 +68,30 @@ public class CommonFileController {
             log.error(e.getMessage());
             return ResponseEntity.badRequest().build();
         }
+    }
+
+    @PostMapping("/upload/image")
+    @ResponseBody
+    public Map<String, Object> imageUpload(HttpServletRequest request,
+        @RequestParam("imageFile") MultipartFile file, @ModelAttribute Map<String, Object> params) {
+
+        try {
+
+            CommonFile commonFile = new CommonFile();
+            commonFile.setTableId(Long.parseLong(params.get("tableId").toString()));
+            commonFile.setTableName(params.get("tableName").toString());
+            String thumbnailYn = params.get("thumbnailYn").toString();
+
+            String email = accountService.getEmail(request);
+            commonFileService.imageUpload(file, commonFile);
+            if (thumbnailYn.equals("Y")) {
+                commonFileService.imageThumbnailUpload(file, commonFile);
+            }
+
+        } catch (RuntimeException e) {
+
+        }
+
+        return null;
     }
 }

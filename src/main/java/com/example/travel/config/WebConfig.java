@@ -1,10 +1,15 @@
 package com.example.travel.config;
 
 import com.example.travel.common.interceptor.JwtInterceptor;
+import com.example.travel.common.interceptor.RateLimitInterceptor;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.annotation.Configuration;
+import org.springframework.core.io.Resource;
+import org.springframework.lang.NonNull;
 import org.springframework.web.servlet.config.annotation.InterceptorRegistry;
+import org.springframework.web.servlet.config.annotation.ResourceHandlerRegistry;
 import org.springframework.web.servlet.config.annotation.WebMvcConfigurer;
+import org.springframework.web.servlet.resource.PathResourceResolver;
 
 /**
  * WebConfig는 Spring의 {@link WebMvcConfigurer}를 구현하여 애플리케이션의 Web MVC 설정을 구성합니다.
@@ -26,10 +31,12 @@ import org.springframework.web.servlet.config.annotation.WebMvcConfigurer;
 public class WebConfig implements WebMvcConfigurer {
 
     private final JwtInterceptor jwtInterceptor;
+    private final RateLimitInterceptor rateLimitInterceptor;
 
     @Autowired
-    public WebConfig(JwtInterceptor jwtInterceptor) {
+    public WebConfig(JwtInterceptor jwtInterceptor, RateLimitInterceptor rateLimitInterceptor) {
         this.jwtInterceptor = jwtInterceptor;
+        this.rateLimitInterceptor = rateLimitInterceptor;
     }
 
     /**
@@ -42,7 +49,12 @@ public class WebConfig implements WebMvcConfigurer {
      *                 특정 요청 패턴에 적용합니다.
      */
     @Override
-    public void addInterceptors(InterceptorRegistry registry) {
+    public void addInterceptors(@NonNull InterceptorRegistry registry) {
+        // Rate Limiting 인터셉터를 먼저 등록 (순서가 중요)
+        registry.addInterceptor(rateLimitInterceptor)
+            .addPathPatterns("/api/**");
+
+        // JWT 인터셉터 등록
         registry.addInterceptor(jwtInterceptor)
             .addPathPatterns("/api/**")
             .excludePathPatterns(
@@ -50,5 +62,31 @@ public class WebConfig implements WebMvcConfigurer {
                 , "/api/file/download/**"
             );
     }
-}
 
+    @Override
+    public void addResourceHandlers(ResourceHandlerRegistry registry) {
+        // ** (1) 정적 자원 핸들러: build 폴더의 파일을 처리합니다.**
+        registry.addResourceHandler("/**")
+            .addResourceLocations("classpath:/static/")
+            .resourceChain(true) // 성능 최적화를 위한 리소스 n체인 활성화
+            .addResolver(new PathResourceResolver() {
+                @Override
+                protected org.springframework.core.io.Resource getResource(String resourcePath,
+                    Resource location) throws java.io.IOException {
+                    Resource requestedResource = location.createRelative(resourcePath);
+
+                    // ** (2) 자원이 존재하면 해당 자원을 반환합니다.**
+                    if (requestedResource.exists() && requestedResource.isReadable()) {
+                        return requestedResource;
+                    }
+
+                    // ** (3) 자원이 없으면 index.html을 반환하여 React 라우팅에 넘깁니다.**
+                    if (resourcePath.startsWith("api") || resourcePath.startsWith("ws")) {
+                        // API 경로는 폴백 대상에서 제외 (선택 사항)
+                        return null;
+                    }
+                    return location.createRelative("index.html");
+                }
+            });
+    }
+}

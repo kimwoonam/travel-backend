@@ -4,6 +4,7 @@ import com.example.travel.common.provider.JwtProvider;
 import com.example.travel.common.provider.RedisProvider;
 import com.example.travel.common.util.CryptoUtil;
 import com.example.travel.common.util.RandomGeneratorUtil;
+import com.example.travel.common.util.ValidationUtil;
 import java.io.IOException;
 import java.net.URLEncoder;
 import java.nio.charset.StandardCharsets;
@@ -185,17 +186,41 @@ public class CommonFileService {
             throw new RuntimeException("파일 확장자를 찾을 수 없습니다.");
         }
 
+        // 파일명 안전성 검사
+        if (ValidationUtil.isUnsafeFilename(originalFileName)) {
+            log.error("안전하지 않은 파일명입니다: {}", originalFileName);
+            throw new RuntimeException("안전하지 않은 파일명입니다.");
+        }
+
         if (originalFileName.contains("..")) {
             log.error("파일이름에 '..'가 포함 될 수 없습니다. {}", originalFileName);
-            throw new RuntimeException("파일이름에 '..'가 포함 될 수 없습니다. ");
+            throw new RuntimeException("파일이름에 특수문자가 포함 될 수 없습니다.");
+        }
+
+        // 파일 크기 검증 (10MB 제한)
+        if (!ValidationUtil.isValidFileSize(file.getSize(), 10 * 1024 * 1024)) {
+            log.error("파일 크기가 너무 큽니다: {} bytes", file.getSize());
+            throw new RuntimeException("파일 크기가 너무 큽니다. 최대 10MB까지 업로드 가능합니다.");
+        }
+
+        // 파일명 길이 검증
+        if (!ValidationUtil.isValidLength(originalFileName, 255)) {
+            log.error("파일명이 너무 깁니다: {}", originalFileName.length());
+            throw new RuntimeException("파일명이 너무 깁니다. 최대 255자까지 가능합니다.");
         }
 
         String fileExtension = originalFileName.substring(originalFileName.lastIndexOf(".") + 1);
 
         if (!(allowedType.equals("image") ? IMAGE_ALLOWED_EXTENSIONS : ALLOWED_EXTENSIONS).contains(
             fileExtension)) {
-            log.error("지정되지 않은 확장자 입니다.");
+            log.error("지정되지 않은 확장자 입니다: {}", fileExtension);
             throw new RuntimeException("지정되지 않은 파일 확장자 입니다.");
+        }
+
+        // 파일명에 XSS 공격 시도가 있는지 검사
+        if (ValidationUtil.containsXss(originalFileName)) {
+            log.error("파일명에 XSS 공격 시도가 감지되었습니다: {}", originalFileName);
+            throw new RuntimeException("안전하지 않은 파일명입니다.");
         }
     }
 
@@ -272,6 +297,22 @@ public class CommonFileService {
     }
 
     /**
+     * 제공된 {@link CommonFile} 엔티티 정보를 기반으로 이미지 파r일의 업로드 프로세스를 처리합니다.
+     * 이 메서드는 파일의 유효성을 검사한 후 업로드 프로세스를 내부 메서드에 위임합니다.
+     *
+     * @param file 업로드할 이미지 파일입니다. null이거나 비어 있지 않은 유효한 {@link MultipartFile} 객체여야 하며,
+     *             이미지 파일에 허용되는 파일 확장자를 준수해야 합니다.
+     * @param commonFile 파일에 대한 메타데이터(예: 연관된 테이블 이름, 테이블 ID 및 기타 관련 세부 정보)를 포함하는 {@link CommonFile} 엔터티입니다.
+     * @throws RuntimeException 파일 검증에 실패하거나 업로드 과정에서 오류가 발생하면 발생
+     */
+    public void imageThumbnailUpload(MultipartFile file, CommonFile commonFile) throws RuntimeException {
+
+        String allowedType = "image";
+        validation(file, allowedType);
+        this.write(file, commonFile, allowedType);
+    }
+
+    /**
      * 제공된 {@link CommonFile} 엔티티 정보를 기반으로 이미지 파일의 업로드 프로세스를 처리합니다.
      * 이 메서드는 파일의 유효성을 검사한 후 업로드 프로세스를 내부 메서드에 위임합니다.
      *
@@ -285,6 +326,7 @@ public class CommonFileService {
         String allowedType = "image";
         validation(file, allowedType);
         this.write(file, commonFile, allowedType);
+        log.info("commonFile : {}", commonFile.toString());
     }
 
     /**
@@ -301,6 +343,7 @@ public class CommonFileService {
         String allowedType = "file";
         validation(file, allowedType);
         this.write(file, commonFile, allowedType);
+        log.info("commonFile : {}", commonFile.toString());
     }
 
     /**

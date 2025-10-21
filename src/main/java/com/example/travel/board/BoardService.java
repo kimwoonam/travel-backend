@@ -7,6 +7,7 @@ import com.example.travel.common.file.CommonFile;
 import com.example.travel.common.file.CommonFileRepository;
 import com.example.travel.common.file.CommonFileService;
 import com.example.travel.common.util.CryptoUtil;
+import com.example.travel.common.util.ValidationUtil;
 import jakarta.transaction.Transactional;
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -149,6 +150,9 @@ public class BoardService {
     public BoardResponse create(Board reqBoard, String email, List<MultipartFile> files)
         throws RuntimeException {
 
+        // 입력값 검증
+        validateBoardInput(reqBoard);
+
         Account account = accountService.getAccountByEmail(email);
         reqBoard.setAccountUuid(account.getUuid());
 
@@ -239,5 +243,51 @@ public class BoardService {
                 boardRepository.delete(board);
             }
         });
+    }
+
+    /**
+     * 게시판 입력값을 검증합니다.
+     */
+    private void validateBoardInput(Board board) throws RuntimeException {
+        if (board == null) {
+            throw new RuntimeException("게시판 정보가 없습니다.");
+        }
+
+        // 제목 검증
+        if (ValidationUtil.isBlank(board.getTitle())) {
+            throw new RuntimeException("제목은 필수입니다.");
+        }
+
+        if (ValidationUtil.containsSqlInjection(board.getTitle())) {
+            throw new RuntimeException("제목에 안전하지 않은 문자가 포함되어 있습니다.");
+        }
+
+        if (ValidationUtil.containsXss(board.getTitle())) {
+            throw new RuntimeException("제목에 안전하지 않은 문자가 포함되어 있습니다.");
+        }
+
+        // 내용 검증
+        if (board.getContent() != null) {
+            if (ValidationUtil.containsSqlInjection(board.getContent())) {
+                throw new RuntimeException("내용에 안전하지 않은 문자가 포함되어 있습니다.");
+            }
+
+            if (ValidationUtil.containsXss(board.getContent())) {
+                throw new RuntimeException("내용에 안전하지 않은 문자가 포함되어 있습니다.");
+            }
+        }
+
+        // 닉네임 검증
+        if (ValidationUtil.isBlank(board.getNickName())) {
+            throw new RuntimeException("닉네임은 필수입니다.");
+        }
+
+        if (ValidationUtil.containsSqlInjection(board.getNickName())) {
+            throw new RuntimeException("닉네임에 안전하지 않은 문자가 포함되어 있습니다.");
+        }
+
+        if (ValidationUtil.containsXss(board.getNickName())) {
+            throw new RuntimeException("닉네임에 안전하지 않은 문자가 포함되어 있습니다.");
+        }
     }
 }

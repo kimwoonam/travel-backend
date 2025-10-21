@@ -7,6 +7,7 @@ import jakarta.servlet.http.HttpServletResponse;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.lang.NonNull;
 import org.springframework.stereotype.Component;
 import org.springframework.web.servlet.HandlerInterceptor;
 
@@ -60,8 +61,8 @@ public class JwtInterceptor implements HandlerInterceptor {
      *         {@code false} 요청이 승인되지 않은 경우
      */
     @Override
-    public boolean preHandle(HttpServletRequest request, HttpServletResponse response,
-        Object handler) {
+    public boolean preHandle(@NonNull HttpServletRequest request, @NonNull HttpServletResponse response,
+        @NonNull Object handler) {
         // OPTIONS 요청은 CORS preflight 요청이므로 통과
         if (request.getMethod().equals("OPTIONS")) {
             return true;

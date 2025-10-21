@@ -1,5 +1,7 @@
 package com.example.travel.account.dto;
 
+import com.example.travel.common.validation.KoreanName;
+import com.example.travel.common.validation.PasswordStrength;
 import jakarta.validation.constraints.Email;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.Size;
@@ -18,15 +20,19 @@ public class AccountDto {
      */
     public static class SignupRequest {
 
-        @Email
-        @NotBlank
+        @Email(message = "올바른 이메일 형식이 아닙니다.")
+        @NotBlank(message = "이메일은 필수입니다.")
+        @Size(max = 100, message = "이메일은 100자를 초과할 수 없습니다.")
         public String email;
 
-        @NotBlank
-        @Size(min = 6)
+        @NotBlank(message = "비밀번호는 필수입니다.")
+        @PasswordStrength
+        @Size(min = 6, max = 128, message = "비밀번호는 6자 이상 255자 이하여야 합니다.")
         public String password;
 
-        @NotBlank
+        @NotBlank(message = "이름은 필수입니다.")
+        @KoreanName
+        @Size(min = 2, max = 20, message = "이름은 2자 이상 20자 이하여야 합니다.")
         public String name;
     }
 
@@ -38,11 +44,13 @@ public class AccountDto {
      */
     public static class LoginRequest {
 
-        @Email
-        @NotBlank
+        @Email(message = "올바른 이메일 형식이 아닙니다.")
+        @NotBlank(message = "이메일은 필수입니다.")
+        @Size(max = 100, message = "이메일은 100자를 초과할 수 없습니다.")
         public String email;
 
-        @NotBlank
+        @NotBlank(message = "비밀번호는 필수입니다.")
+        @Size(max = 128, message = "비밀번호는 128자를 초과할 수 없습니다.")
         public String password;
     }
 
