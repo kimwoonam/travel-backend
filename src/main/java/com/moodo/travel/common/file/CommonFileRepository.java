@@ -1,0 +1,66 @@
+package com.moodo.travel.common.file;
+
+import io.lettuce.core.dynamic.annotation.Param;
+import jakarta.transaction.Transactional;
+import java.util.List;
+import java.util.Optional;
+import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.Modifying;
+import org.springframework.data.jpa.repository.Query;
+
+/**
+ * {@link CommonFile} 엔터티를 관리하기 위한 저장소 인터페이스입니다.
+ * CommonFile 엔터티에 대한 CRUD 작업과 사용자 지정 쿼리 메서드를 제공합니다.
+ */
+public interface CommonFileRepository extends JpaRepository<CommonFile, Long> {
+
+    /**
+     * 삭제된 것으로 표시되지 않은 지정된 UUID를 가진 {@link CommonFile} 엔터티를 검색합니다.
+     *
+     * @param uuid 검색할 {@link CommonFile} 엔터티의 고유 식별자
+     * @return {@link CommonFile} 엔터티가 발견되면 해당 엔터티를 포함하는 {@link Optional}을 반환하고,
+     *         일치하는 엔터티가 발견되지 않거나 엔터티가 삭제된 것으로 표시된 경우 빈 {@link Optional}을 반환합니다.
+     */
+    @Query("SELECT c FROM CommonFile c WHERE c.uuid = :uuid AND c.deleteYn = 'N'")
+    Optional<CommonFile> findByUuid(@Param("uuid") String uuid);
+
+    /**
+     * 지정된 테이블 이름 및 테이블 ID와 연결된 {@link CommonFile} 엔터티 목록을 검색합니다.
+     *
+     * @param tableName 검색 시 일치시킬 테이블의 이름
+     * @param tableId 검색 시 일치시킬 테이블의 ID
+     * @return 주어진 테이블 이름과 테이블 ID에 해당하는 {@link CommonFile} 엔터티 목록을 반환합니다.
+     *         일치하는 엔터티가 없으면 빈 목록이 반환
+     */
+    @Query("SELECT c FROM CommonFile c WHERE c.tableName = :tableName AND c.tableId = :tableId AND c.deleteYn = 'N'")
+    List<CommonFile> findByTableNameAndTableId(String tableName, Long tableId);
+
+    /**
+     * 지정된 UUID, 테이블 이름 및 테이블 ID와 연결된 {@link CommonFile} 엔터티의 삭제 상태를 업데이트합니다.
+     * `deleteYn` 필드는 'Y'로 설정되고 `deletedAt` 필드는 현재 타임스탬프로 업데이트됩니다.
+     * `deleteYn`이 'N'으로 설정된 엔터티만 영향을 받습니다.
+     *
+     * @param uuid 업데이트할 {@link CommonFile}의 고유 식별자
+     * @param tableName 업데이트할 {@link CommonFile}과 연관된 테이블의 이름
+     * @param tableId 업데이트할 {@link CommonFile}과 연관된 테이블의 ID
+     */
+    @Modifying
+    @Transactional
+    @Query("UPDATE CommonFile c SET c.deleteYn = 'Y', c.deletedAt = CURRENT_TIMESTAMP WHERE c.uuid = :uuid AND c.tableName = :tableName AND c.tableId = :tableId AND c.deleteYn = 'N'")
+    void updateDeleteStatusByUuidAndTableNameAndTableId(@Param("uuid") String uuid,
+        @Param("tableName") String tableName, @Param("tableId") Long tableId);
+
+    /**
+     * 지정된 테이블 이름 및 테이블 ID와 연관된 {@link CommonFile} 엔터티의 삭제 상태를 업데이트합니다.
+     * `deleteYn` 필드는 'Y'로 설정되고, `deletedAt` 타임스탬프는 `deleteYn`이 'N'인 엔터티의 경우 현재 시간으로 업데이트됩니다.
+     *
+     * @param tableName 업데이트할 {@link CommonFile}과 연관된 테이블의 이름
+     * @param tableId 업데이트할 {@link CommonFile}과 연관된 테이블의 ID
+     */
+    @Modifying
+    @Transactional
+    @Query("UPDATE CommonFile c SET c.deleteYn = 'Y', c.deletedAt = CURRENT_TIMESTAMP WHERE c.tableName = :tableName AND c.tableId = :tableId AND c.deleteYn = 'N'")
+    void updateDeleteStatusByTableNameAndTableId(@Param("tableName") String tableName,
+        @Param("tableId") Long tableId);
+
+}

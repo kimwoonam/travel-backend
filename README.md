@@ -36,7 +36,7 @@
 ## 구조
 ```bash
 ├── java
-│   │   ├── com/example/travel
+│   │   ├── com/moodo/travel
 │   │   │   ├── board
 │   │   │   │   ├── Board.java
 │   │   │   │   ├── BoardController.java
