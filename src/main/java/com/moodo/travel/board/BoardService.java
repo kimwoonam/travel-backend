@@ -17,6 +17,11 @@ import java.util.UUID;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.cache.annotation.CacheEvict;
+import org.springframework.cache.annotation.Cacheable;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageImpl;
+import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 import org.springframework.web.multipart.MultipartFile;
 
@@ -90,6 +95,7 @@ public class BoardService {
      *
      * @return 암호화된 UUID가 있는 Board 엔터티 목록을 생성 날짜별로 내림차순으로 정렬 한 객체
      */
+    @Cacheable(value = "boards", key = "'all'", unless = "#result.isEmpty()")
     public List<Board> getAllBoards() {
         List<Board> boards = boardRepository.findAllByOrderByCreatedAtDesc();
         // 조회 시 UUID를 암호화하여 반환
@@ -98,12 +104,57 @@ public class BoardService {
     }
 
     /**
+     * 페이징을 적용하여 게시판 목록을 조회합니다.
+     *
+     * @param pageable 페이징 정보
+     * @return 페이징된 Board 엔터티 목록
+     */
+    @Cacheable(value = "boards", key = "'page_' + #pageable.pageNumber + '_' + #pageable.pageSize")
+    public Page<Board> getAllBoards(Pageable pageable) {
+        Page<Board> boardPage = boardRepository.findAllByOrderByCreatedAtDesc(pageable);
+        
+        // UUID 암호화
+        List<Board> encryptedBoards = boardPage.getContent().stream()
+            .map(board -> {
+                board.setUuid(cryptoUtil.encrypt(board.getUuid()));
+                return board;
+            })
+            .toList();
+        
+        return new PageImpl<>(encryptedBoards, pageable, boardPage.getTotalElements());
+    }
+
+    /**
+     * 특정 계정의 게시판을 페이징하여 조회합니다.
+     *
+     * @param accountUuid 계정 UUID
+     * @param pageable 페이징 정보
+     * @return 페이징된 Board 엔터티 목록
+     */
+    @Cacheable(value = "boards", key = "'account_' + #accountUuid + '_' + #pageable.pageNumber + '_' + #pageable.pageSize")
+    public Page<Board> getBoardsByAccountUuid(String accountUuid, Pageable pageable) {
+        Page<Board> boardPage = boardRepository.findByAccountUuidOrderByCreatedAtDesc(accountUuid, pageable);
+        
+        // UUID 암호화
+        List<Board> encryptedBoards = boardPage.getContent().stream()
+            .map(board -> {
+                board.setUuid(cryptoUtil.encrypt(board.getUuid()));
+                return board;
+            })
+            .toList();
+        
+        return new PageImpl<>(encryptedBoards, pageable, boardPage.getTotalElements());
+    }
+
+    /**
      * UUID로 Board 엔터티를 검색합니다. Board를 찾을 수 없으면 RuntimeException이 발생합니다. UUID는 반환되기 전에 암호화됩니다.
+     * 캐시를 활용하여 성능을 최적화합니다.
      *
      * @param encryptedUuid 검색할 보드의 고유 식별자
      * @return Board UUID가 암호화된 Board 엔터티를 반환
      * @throws RuntimeException 주어진 UUID로 보드를 찾을 수 없는 경우 발생
      */
+    @Cacheable(value = "board", key = "#encryptedUuid")
     public BoardResponse getBoardByUuid(String encryptedUuid) throws RuntimeException {
 
         // UUID가 암호화된 형태인지 확인
@@ -141,12 +192,14 @@ public class BoardService {
 
     /**
      * 새로운 보드 엔티티를 만들고 업로드된 파일을 해당 엔티티에 연결합니다.
+     * 생성 후 관련 캐시를 무효화합니다.
      *
      * @param reqBoard 생성할 보드의 세부 정보를 포함하는 보드 객체
      * @param files 생성된 보드와 연관될 파일 목록
      * @return 보드 엔터티와 연관된 파일 목록을 결합한 BoardResponse 객체를 반환합니다.
      * @throws RuntimeException 보드를 저장하거나 파일을 처리하는 동안 오류가 발생하는 경우 발생
      */
+    @CacheEvict(value = {"boards", "board"}, allEntries = true)
     public BoardResponse create(Board reqBoard, String email, List<MultipartFile> files)
         throws RuntimeException {
 
@@ -164,6 +217,7 @@ public class BoardService {
 
     /**
      * UUID로 식별된 지정된 보드에 대한 보드 세부 정보와 관련 파일을 업데이트합니다.
+     * 업데이트 후 관련 캐시를 무효화합니다.
      *
      * @param email 게시판을 소유한 사용자의 이메일
      * @param encryptedUuid 업데이트할 보드의 암호화된 UUID
@@ -173,6 +227,7 @@ public class BoardService {
      * @throws RuntimeException 사용자 정보를 검색할 수 없거나 게시판을 찾을 수 없는 경우
      */
     @Transactional
+    @CacheEvict(value = {"boards", "board"}, allEntries = true)
     public BoardResponse update(String email, String encryptedUuid, Board boardDetail,
         String deleteFileId, List<MultipartFile> files) {
 
@@ -200,11 +255,13 @@ public class BoardService {
 
     /**
      * 지정된 사용자 이메일과 암호화된 UUID와 관련된 게시판을 삭제합니다.
+     * 삭제 후 관련 캐시를 무효화합니다.
      *
      * @param email 삭제할 게시판 사용자의 이메일 주소
      * @param encryptedUuid 삭제할 보드의 암호화된 UUID
      * @throws RuntimeException 사용자 정보가 없거나 지정된 게시판이 존재하지 않는 경우
      */
+    @CacheEvict(value = {"boards", "board"}, allEntries = true)
     public void delete(String email, String encryptedUuid) {
 
         Account account = accountService.getAccountByEmail(email);
@@ -220,12 +277,14 @@ public class BoardService {
      * 이 메서드는 제공된 이메일을 사용하여 사용자 계정 정보를 검색하고, UUID를 복호화하고,
      * 소프트 삭제 방식을 사용하여 관련 게시판과 관련 파일을 삭제합니다.
      * UUID가 제공되지 않거나 비어 있으면 RuntimeException이 발생합니다.
+     * 삭제 후 관련 캐시를 무효화합니다.
      *
      * @param email 삭제해야 할 보드의 계정 소유자의 이메일 주소
      * @param uuid 삭제할 보드를 나타내는 암호화된 UUID의 쉼표로 구분된 문자열
      * @throws RuntimeException UUID가 비어 있거나 사용자 정보를 검색할 수 없는 경우
      */
     @Transactional
+    @CacheEvict(value = {"boards", "board"}, allEntries = true)
     public void deleteBulk(String email, String uuid) throws RuntimeException {
 
         if (uuid.isEmpty()) {

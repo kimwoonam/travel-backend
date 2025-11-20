@@ -5,6 +5,7 @@ import jakarta.persistence.Entity;
 import jakarta.persistence.GeneratedValue;
 import jakarta.persistence.GenerationType;
 import jakarta.persistence.Id;
+import jakarta.persistence.Index;
 import jakarta.persistence.PrePersist;
 import jakarta.persistence.Table;
 import jakarta.validation.constraints.NotBlank;
@@ -17,7 +18,12 @@ import org.hibernate.annotations.Comment;
 @Entity
 @Getter
 @Setter
-@Table(name = "board")
+@Table(name = "board", indexes = {
+    @Index(name = "idx_board_uuid", columnList = "uuid"),
+    @Index(name = "idx_board_account_uuid", columnList = "account_uuid"),
+    @Index(name = "idx_board_created_at", columnList = "created_at"),
+    @Index(name = "idx_board_account_created", columnList = "account_uuid,created_at")
+})
 public class Board {
 
     @Id

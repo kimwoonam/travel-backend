@@ -7,6 +7,10 @@ import java.util.List;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Pageable;
+import org.springframework.data.domain.Sort;
 import org.springframework.http.ResponseEntity;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.bind.annotation.DeleteMapping;
@@ -42,13 +46,29 @@ public class BoardController {
     /**
      * 데이터베이스에서 모든 게시판 목록을 검색합니다.
      * 게시판은 생성일을 기준으로 내림차순으로 정렬되며 UUID는 반환되기 전에 암호화됩니다.
+     * 페이징을 지원합니다.
      *
+     * @param page 페이지 번호 (0부터 시작, 기본값: 0)
+     * @param size 페이지 크기 (기본값: 20)
+     * @param sort 정렬 기준 (기본값: createdAt,desc)
      * @return 암호화된 UUID가 있는 보드 목록을 포함하는 ResponseEntity입니다. 생성일을 기준으로 내림차순으로 정렬됩니다.
      */
     @GetMapping
-    public ResponseEntity<List<Board>> getAllBoards() {
-        List<Board> boards = boardService.getAllBoards();
-        return ResponseEntity.ok(boards);
+    public ResponseEntity<?> getAllBoards(
+        @RequestParam(value = "page", defaultValue = "0") int page,
+        @RequestParam(value = "size", defaultValue = "20") int size,
+        @RequestParam(value = "sort", defaultValue = "createdAt,desc") String sort) {
+        
+        // 정렬 파라미터 파싱
+        String[] sortParams = sort.split(",");
+        Sort.Direction direction = sortParams.length > 1 && "desc".equalsIgnoreCase(sortParams[1])
+            ? Sort.Direction.DESC : Sort.Direction.ASC;
+        Sort sortObj = Sort.by(direction, sortParams[0]);
+        
+        Pageable pageable = PageRequest.of(page, size, sortObj);
+        Page<Board> boardPage = boardService.getAllBoards(pageable);
+        
+        return ResponseEntity.ok(boardPage);
     }
 
     /**

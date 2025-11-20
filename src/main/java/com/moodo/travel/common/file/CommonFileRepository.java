@@ -1,12 +1,12 @@
 package com.moodo.travel.common.file;
 
-import io.lettuce.core.dynamic.annotation.Param;
 import jakarta.transaction.Transactional;
 import java.util.List;
 import java.util.Optional;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Modifying;
 import org.springframework.data.jpa.repository.Query;
+import org.springframework.data.repository.query.Param;
 
 /**
  * {@link CommonFile} 엔터티를 관리하기 위한 저장소 인터페이스입니다.
@@ -26,14 +26,15 @@ public interface CommonFileRepository extends JpaRepository<CommonFile, Long> {
 
     /**
      * 지정된 테이블 이름 및 테이블 ID와 연결된 {@link CommonFile} 엔터티 목록을 검색합니다.
+     * 복합 인덱스를 활용한 최적화된 쿼리입니다.
      *
      * @param tableName 검색 시 일치시킬 테이블의 이름
      * @param tableId 검색 시 일치시킬 테이블의 ID
      * @return 주어진 테이블 이름과 테이블 ID에 해당하는 {@link CommonFile} 엔터티 목록을 반환합니다.
      *         일치하는 엔터티가 없으면 빈 목록이 반환
      */
-    @Query("SELECT c FROM CommonFile c WHERE c.tableName = :tableName AND c.tableId = :tableId AND c.deleteYn = 'N'")
-    List<CommonFile> findByTableNameAndTableId(String tableName, Long tableId);
+    @Query("SELECT c FROM CommonFile c WHERE c.tableName = :tableName AND c.tableId = :tableId AND c.deleteYn = 'N' ORDER BY c.createdAt DESC")
+    List<CommonFile> findByTableNameAndTableId(@Param("tableName") String tableName, @Param("tableId") Long tableId);
 
     /**
      * 지정된 UUID, 테이블 이름 및 테이블 ID와 연결된 {@link CommonFile} 엔터티의 삭제 상태를 업데이트합니다.

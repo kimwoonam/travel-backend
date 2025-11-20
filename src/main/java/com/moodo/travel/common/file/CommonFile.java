@@ -5,6 +5,7 @@ import jakarta.persistence.Entity;
 import jakarta.persistence.GeneratedValue;
 import jakarta.persistence.GenerationType;
 import jakarta.persistence.Id;
+import jakarta.persistence.Index;
 import jakarta.persistence.PrePersist;
 import jakarta.persistence.Table;
 import jakarta.persistence.UniqueConstraint;
@@ -23,7 +24,13 @@ import org.hibernate.annotations.Comment;
     uniqueConstraints = @UniqueConstraint(
         columnNames = {"uuid", "table_name", "table_id"},
         name = "unique_uuid_table_name_table_id"
-    )
+    ),
+    indexes = {
+        @Index(name = "idx_common_file_uuid", columnList = "uuid"),
+        @Index(name = "idx_common_file_table", columnList = "table_name,table_id"),
+        @Index(name = "idx_common_file_delete_yn", columnList = "delete_yn"),
+        @Index(name = "idx_common_file_created_at", columnList = "created_at")
+    }
 )
 public class CommonFile {
 

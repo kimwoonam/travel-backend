@@ -5,6 +5,7 @@ import jakarta.persistence.Entity;
 import jakarta.persistence.GeneratedValue;
 import jakarta.persistence.GenerationType;
 import jakarta.persistence.Id;
+import jakarta.persistence.Index;
 import jakarta.persistence.PrePersist;
 import jakarta.persistence.Table;
 import jakarta.persistence.UniqueConstraint;
@@ -19,7 +20,13 @@ import org.hibernate.annotations.Comment;
 @Entity
 @Getter
 @Setter
-@Table(name = "account", uniqueConstraints = @UniqueConstraint(columnNames = "email"))
+@Table(name = "account", 
+    uniqueConstraints = @UniqueConstraint(columnNames = "email"),
+    indexes = {
+        @Index(name = "idx_account_email", columnList = "email"),
+        @Index(name = "idx_account_uuid", columnList = "uuid"),
+        @Index(name = "idx_account_created_at", columnList = "created_at")
+    })
 public class Account {
 
     @Id
