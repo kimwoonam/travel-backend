@@ -1,4 +1,4 @@
-package com.example.travel.common.metrics;
+package com.moodo.travel.common.metrics;
 
 import io.micrometer.core.aop.TimedAspect;
 import io.micrometer.core.instrument.MeterRegistry;
@@ -84,4 +84,3 @@ public class MetricsConfig {
         ).increment();
     }
 }
-

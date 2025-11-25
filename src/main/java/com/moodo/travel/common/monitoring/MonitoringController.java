@@ -1,4 +1,4 @@
-package com.example.travel.common.monitoring;
+package com.moodo.travel.common.monitoring;
 
 import io.micrometer.core.instrument.MeterRegistry;
 import io.micrometer.core.instrument.Counter;

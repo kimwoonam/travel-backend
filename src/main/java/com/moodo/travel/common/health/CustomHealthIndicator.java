@@ -1,4 +1,4 @@
-package com.example.travel.common.health;
+package com.moodo.travel.common.health;
 
 import org.springframework.boot.actuate.health.Health;
 import org.springframework.boot.actuate.health.HealthIndicator;

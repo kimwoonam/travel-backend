@@ -1,6 +1,6 @@
-package com.example.travel.common.interceptor;
+package com.moodo.travel.common.interceptor;
 
-import com.example.travel.common.metrics.MetricsConfig;
+import com.moodo.travel.common.metrics.MetricsConfig;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import org.springframework.beans.factory.annotation.Autowired;

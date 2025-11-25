@@ -1,6 +1,7 @@
 package com.moodo.travel.config;
 
 import com.moodo.travel.common.interceptor.JwtInterceptor;
+import com.moodo.travel.common.interceptor.MetricsInterceptor;
 import com.moodo.travel.common.interceptor.RateLimitInterceptor;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.annotation.Configuration;
@@ -32,11 +33,13 @@ public class WebConfig implements WebMvcConfigurer {
 
     private final JwtInterceptor jwtInterceptor;
     private final RateLimitInterceptor rateLimitInterceptor;
+    private final MetricsInterceptor metricsInterceptor;
 
     @Autowired
-    public WebConfig(JwtInterceptor jwtInterceptor, RateLimitInterceptor rateLimitInterceptor) {
+    public WebConfig(JwtInterceptor jwtInterceptor, RateLimitInterceptor rateLimitInterceptor, MetricsInterceptor metricsInterceptor) {
         this.jwtInterceptor = jwtInterceptor;
         this.rateLimitInterceptor = rateLimitInterceptor;
+        this.metricsInterceptor = metricsInterceptor;
     }
 
     /**
@@ -52,6 +55,10 @@ public class WebConfig implements WebMvcConfigurer {
     public void addInterceptors(@NonNull InterceptorRegistry registry) {
         // Rate Limiting 인터셉터를 먼저 등록 (순서가 중요)
         registry.addInterceptor(rateLimitInterceptor)
+            .addPathPatterns("/api/**");
+
+        // 메트릭 수집 인터셉터 등록
+        registry.addInterceptor(metricsInterceptor)
             .addPathPatterns("/api/**");
 
         // JWT 인터셉터 등록
