@@ -115,10 +115,7 @@ public class BoardService {
         
         // UUID 암호화
         List<Board> encryptedBoards = boardPage.getContent().stream()
-            .map(board -> {
-                board.setUuid(cryptoUtil.encrypt(board.getUuid()));
-                return board;
-            })
+            .peek(board -> board.setUuid(cryptoUtil.encrypt(board.getUuid())))
             .toList();
         
         return new PageImpl<>(encryptedBoards, pageable, boardPage.getTotalElements());
