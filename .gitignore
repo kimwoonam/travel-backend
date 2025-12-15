@@ -1,3 +1,11 @@
 /target/
 /.idea/
 /travel-backend.iml
+*.log
+logs/
+upload/
+.env
+.env.local
+.env.*.local
+*.iml
+.DS_Store

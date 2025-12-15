@@ -1,0 +1,14 @@
+target/
+.idea/
+*.iml
+.vscode/
+*.log
+logs/
+upload/
+.git/
+.gitignore
+README.md
+env.example
+.DS_Store
+
+

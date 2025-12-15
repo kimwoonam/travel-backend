@@ -42,6 +42,15 @@ public class SecurityConfig {
                     new org.springframework.security.web.csrf.HttpSessionCsrfTokenRepository())
             )
 
+            // 요청 권한 설정
+            .authorizeHttpRequests(authorize -> authorize
+                .requestMatchers("/api/auth/**", "/api/file/download/**", 
+                    "/actuator/**", "/api/monitoring/**",
+                    "/swagger-ui/**", "/swagger-ui.html", "/api-docs/**", "/v3/api-docs/**")
+                .permitAll()
+                .anyRequest().authenticated()
+            )
+
             // 세션 관리 설정 (STATELESS로 JWT 사용)
             .sessionManagement(session -> session
                 .sessionCreationPolicy(SessionCreationPolicy.STATELESS)

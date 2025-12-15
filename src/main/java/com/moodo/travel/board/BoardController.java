@@ -2,6 +2,13 @@ package com.moodo.travel.board;
 
 import com.moodo.travel.account.AccountService;
 import com.moodo.travel.board.dto.BoardDto.BoardResponse;
+import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.Parameter;
+import io.swagger.v3.oas.annotations.media.Content;
+import io.swagger.v3.oas.annotations.media.Schema;
+import io.swagger.v3.oas.annotations.responses.ApiResponse;
+import io.swagger.v3.oas.annotations.responses.ApiResponses;
+import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.servlet.http.HttpServletRequest;
 import java.util.List;
 import org.slf4j.Logger;
@@ -30,6 +37,7 @@ import org.springframework.web.multipart.MultipartFile;
  */
 @RestController
 @RequestMapping("/api/board")
+@Tag(name = "게시판 API", description = "게시판 CRUD 및 파일 관리 API")
 public class BoardController {
 
     private static final Logger log = LoggerFactory.getLogger(BoardController.class);
@@ -53,10 +61,18 @@ public class BoardController {
      * @param sort 정렬 기준 (기본값: createdAt,desc)
      * @return 암호화된 UUID가 있는 보드 목록을 포함하는 ResponseEntity입니다. 생성일을 기준으로 내림차순으로 정렬됩니다.
      */
+    @Operation(summary = "게시판 목록 조회", description = "페이징을 지원하는 게시판 목록을 조회합니다.")
+    @ApiResponses(value = {
+        @ApiResponse(responseCode = "200", description = "조회 성공"),
+        @ApiResponse(responseCode = "401", description = "인증 실패")
+    })
     @GetMapping
     public ResponseEntity<?> getAllBoards(
+        @Parameter(description = "페이지 번호 (0부터 시작)", example = "0")
         @RequestParam(value = "page", defaultValue = "0") int page,
+        @Parameter(description = "페이지 크기", example = "20")
         @RequestParam(value = "size", defaultValue = "20") int size,
+        @Parameter(description = "정렬 기준 (필드명,방향)", example = "createdAt,desc")
         @RequestParam(value = "sort", defaultValue = "createdAt,desc") String sort) {
         
         // 정렬 파라미터 파싱
@@ -77,8 +93,17 @@ public class BoardController {
      * @param uuid 검색할 게시판의 고유 식별자
      * @return 성공 시 검색된 보드을 포함하는 ResponseEntity를 반환하고, 오류가 발생하면 잘못된 요청 응답을 반환합니다.
      */
+    @Operation(summary = "게시판 상세 조회", description = "UUID로 게시판 상세 정보를 조회합니다.")
+    @ApiResponses(value = {
+        @ApiResponse(responseCode = "200", description = "조회 성공",
+            content = @Content(schema = @Schema(implementation = BoardResponse.class))),
+        @ApiResponse(responseCode = "400", description = "잘못된 UUID"),
+        @ApiResponse(responseCode = "401", description = "인증 실패")
+    })
     @GetMapping("/{uuid}")
-    public ResponseEntity<BoardResponse> getBoardByUuid(@PathVariable String uuid) {
+    public ResponseEntity<BoardResponse> getBoardByUuid(
+        @Parameter(description = "게시판 UUID", required = true)
+        @PathVariable String uuid) {
 
         try {
             return ResponseEntity.ok(boardService.getBoardByUuid(uuid));
@@ -97,10 +122,20 @@ public class BoardController {
      * @param files 게시판과 연관될 파일 목록
      * @return 성공하면 생성된 게시판의 세부 정보를 포함하는 ResponseEntity 또는 예외가 발생하면 오류 응답
      */
+    @Operation(summary = "게시판 생성", description = "새로운 게시판을 생성합니다. 파일 업로드를 지원합니다.")
+    @ApiResponses(value = {
+        @ApiResponse(responseCode = "200", description = "생성 성공",
+            content = @Content(schema = @Schema(implementation = BoardResponse.class))),
+        @ApiResponse(responseCode = "400", description = "잘못된 요청"),
+        @ApiResponse(responseCode = "401", description = "인증 실패")
+    })
     @PostMapping
     @Transactional
-    public ResponseEntity<BoardResponse> createBoard(HttpServletRequest request,
-        @ModelAttribute Board board, @RequestParam(name = "files", required = false) List<MultipartFile> files) {
+    public ResponseEntity<BoardResponse> createBoard(
+        HttpServletRequest request,
+        @ModelAttribute Board board,
+        @Parameter(description = "업로드할 파일 목록")
+        @RequestParam(name = "files", required = false) List<MultipartFile> files) {
 
         try {
             String email = accountService.getEmail(request);

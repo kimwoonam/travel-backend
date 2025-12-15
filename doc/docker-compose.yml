@@ -1,0 +1,108 @@
+version: '3.8'
+
+services:
+  # PostgreSQL 데이터베이스
+  postgres:
+    image: postgres:15-alpine
+    container_name: travel-postgres
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB:-travel}
+      POSTGRES_USER: ${POSTGRES_USER:-travel}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-travel}
+    ports:
+      - "${POSTGRES_PORT:-5432}:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-travel}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - travel-network
+
+  # Redis
+  redis:
+    image: redis:7-alpine
+    container_name: travel-redis
+    ports:
+      - "${REDIS_PORT:-6379}:6379"
+    volumes:
+      - redis_data:/data
+    command: redis-server --appendonly yes
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - travel-network
+
+  # Backend Application
+  backend:
+    build:
+      context: ..
+      dockerfile: ../Dockerfile
+    container_name: travel-backend
+    environment:
+      SPRING_PROFILES_ACTIVE: ${SPRING_PROFILES_ACTIVE:-prod}
+      DB_URL: jdbc:postgresql://postgres:5432/${POSTGRES_DB:-travel}
+      DB_USER: ${POSTGRES_USER:-travel}
+      DB_PASSWORD: ${POSTGRES_PASSWORD:-travel}
+      REDIS_HOST: redis
+      REDIS_PORT: 6379
+      JWT_SECRET: ${JWT_SECRET}
+      UUID_CRYPTO_SECRET: ${UUID_CRYPTO_SECRET}
+      FILE_UPLOAD_PATH: /app/upload/file/
+      IMAGE_UPLOAD_PATH: /app/upload/image/
+      THUMBNAIL_UPLOAD_PATH: /app/upload/thumbnail/
+    ports:
+      - "${BACKEND_PORT:-8080}:8080"
+    volumes:
+      - ./travel-backend/upload:/app/upload
+      - ./travel-backend/logs:/app/logs
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost:8080/actuator/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+    networks:
+      - travel-network
+    restart: unless-stopped
+
+  # Frontend Application
+  frontend:
+    build:
+      context: ../../travel-front
+      dockerfile: Dockerfile
+    container_name: travel-frontend
+    ports:
+      - "${FRONTEND_PORT:-80}:80"
+    depends_on:
+      - backend
+    healthcheck:
+      test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost/"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 10s
+    networks:
+      - travel-network
+    restart: unless-stopped
+
+volumes:
+  postgres_data:
+    driver: local
+  redis_data:
+    driver: local
+
+networks:
+  travel-network:
+    driver: bridge
+

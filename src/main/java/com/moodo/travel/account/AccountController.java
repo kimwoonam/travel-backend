@@ -2,6 +2,13 @@ package com.moodo.travel.account;
 
 import com.moodo.travel.account.dto.AccountDto;
 import com.moodo.travel.account.dto.AccountDto.LoginResponse;
+import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.Parameter;
+import io.swagger.v3.oas.annotations.media.Content;
+import io.swagger.v3.oas.annotations.media.Schema;
+import io.swagger.v3.oas.annotations.responses.ApiResponse;
+import io.swagger.v3.oas.annotations.responses.ApiResponses;
+import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpHeaders;
@@ -31,6 +38,7 @@ import org.springframework.web.bind.annotation.RestController;
  */
 @RestController
 @RequestMapping("/api/auth")
+@Tag(name = "인증 API", description = "사용자 인증 및 계정 관리 API")
 public class AccountController {
 
     private final AccountService accountService;
@@ -49,6 +57,13 @@ public class AccountController {
      * @return 로그인 응답을 포함하는 ResponseEntity(성공 시 토큰, 이메일, 이름이 포함된)를 반환하고,
      *         이메일이 이미 등록된 경우 충돌 상태 코드가 포함된 오류 메시지를 반환
      */
+    @Operation(summary = "회원가입", description = "새로운 사용자 계정을 생성합니다.")
+    @ApiResponses(value = {
+        @ApiResponse(responseCode = "201", description = "회원가입 성공",
+            content = @Content(schema = @Schema(implementation = LoginResponse.class))),
+        @ApiResponse(responseCode = "409", description = "이미 등록된 이메일"),
+        @ApiResponse(responseCode = "400", description = "잘못된 요청 데이터")
+    })
     @PostMapping("/signup")
     public ResponseEntity<?> signup(@Valid @RequestBody AccountDto.SignupRequest request) {
         try {
@@ -73,6 +88,13 @@ public class AccountController {
      * @return ResponseEntity는 로그인 응답을 포함하며, 성공 시 토큰, 이메일, 이름을 포함하고
      *         인증에 실패하면 권한 없음 상태의 오류 메시지를 반환
      */
+    @Operation(summary = "로그인", description = "이메일과 비밀번호로 로그인합니다.")
+    @ApiResponses(value = {
+        @ApiResponse(responseCode = "200", description = "로그인 성공",
+            content = @Content(schema = @Schema(implementation = LoginResponse.class))),
+        @ApiResponse(responseCode = "401", description = "인증 실패"),
+        @ApiResponse(responseCode = "400", description = "잘못된 요청 데이터")
+    })
     @PostMapping("/login")
     public ResponseEntity<?> login(@Valid @RequestBody AccountDto.LoginRequest request) {
         try {
@@ -98,9 +120,20 @@ public class AccountController {
      * @return 삭제 작업의 결과를 나타내는 ResponseEntity입니다.
      *         성공 시 "콘텐츠 없음" 응답을 반환하고, 성공 시 "잘못된 요청" 응답을 반환
      */
+    @Operation(summary = "계정 삭제", description = "계정을 삭제합니다. 인증 토큰과 비밀번호 확인이 필요합니다.")
+    @ApiResponses(value = {
+        @ApiResponse(responseCode = "204", description = "계정 삭제 성공"),
+        @ApiResponse(responseCode = "400", description = "잘못된 요청"),
+        @ApiResponse(responseCode = "401", description = "인증 실패")
+    })
     @DeleteMapping("/delete")
-    public ResponseEntity<?> delete(@RequestHeader("Authorization") String authHeader,
-        @RequestParam String email, @RequestParam String password) {
+    public ResponseEntity<?> delete(
+        @Parameter(description = "Bearer 토큰", required = true)
+        @RequestHeader("Authorization") String authHeader,
+        @Parameter(description = "삭제할 계정의 이메일", required = true)
+        @RequestParam String email,
+        @Parameter(description = "계정 비밀번호", required = true)
+        @RequestParam String password) {
         try {
             if (authHeader != null && authHeader.startsWith("Bearer ")) {
                 String token = authHeader.substring(7);
@@ -129,8 +162,16 @@ public class AccountController {
      *         - 제공된 토큰이 유효하지 않거나 형식이 올바르지 않은 경우 400 Bad Request가 반환됩니다.
      *         - 로그아웃 프로세스 중 오류가 발생한 경우 500 Internal Server Error가 반환됩니다.
      */
+    @Operation(summary = "로그아웃", description = "현재 세션을 종료하고 토큰을 무효화합니다.")
+    @ApiResponses(value = {
+        @ApiResponse(responseCode = "204", description = "로그아웃 성공"),
+        @ApiResponse(responseCode = "400", description = "잘못된 토큰"),
+        @ApiResponse(responseCode = "500", description = "서버 오류")
+    })
     @PostMapping("/logout")
-    public ResponseEntity<?> logout(@RequestHeader("Authorization") String authHeader) {
+    public ResponseEntity<?> logout(
+        @Parameter(description = "Bearer 토큰", required = true)
+        @RequestHeader("Authorization") String authHeader) {
         try {
             if (authHeader != null && authHeader.startsWith("Bearer ")) {
                 String token = authHeader.substring(7);
