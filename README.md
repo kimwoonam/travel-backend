@@ -4,6 +4,11 @@
 
 * Cursor AI를 통한 게시판 FrontEnd/BackEnd 개발
 
+## github
+
+* frontend : https://github.com/kimwoonam/travel-front
+* backend : https://github.com/kimwoonam/travel-backend
+
 ## 개발스킬
 
 ### FrontEnd
@@ -59,7 +64,3 @@
 ├── resources
 │   └── application.properties
 ``` 
-## github
-
-* frontend : https://github.com/kimwoonam/travel-front
-* backend : https://github.com/kimwoonam/travel-backend
